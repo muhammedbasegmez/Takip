@@ -227,10 +227,11 @@
                 <select id="debtUnit" class="select">
                     <option value="GRAM">Gram Altın</option>
                     <option value="CEYREK">Çeyrek Altın</option>
+                    <option value="CUMHURIYET">Cumhuriyet Altını (Tam)</option>
                     <option value="USD">Dolar ($)</option>
                     <option value="TRY">Türk Lirası (₺)</option>
                 </select>
-                <input type="number" step="0.01" id="debtAmount" class="input" placeholder="Miktar (Örn: 10 Gram)" required>
+                <input type="number" step="0.01" id="debtAmount" class="input" placeholder="Miktar (Örn: 2 Adet)" required>
                 <input type="text" id="debtDueDate" class="input" placeholder="Vade / Ödeme Tarihi (İsteğe Bağlı)">
                 <button type="submit" class="btn">Borç Kaydet</button>
                 <button type="button" class="btn btn-sec" style="margin-top: 8px;" onclick="closeModals()">İptal</button>
@@ -296,7 +297,6 @@
             document.getElementById('rateUsd').innerText = `₺${rates.usd.toFixed(2)}`;
         }
 
-        // KESİNTİSİZ DOĞRUDAN SERVİS
         async function fetchRates() {
             try {
                 const res = await fetch('https://api.genelpara.com/embed/altin.json');
@@ -477,6 +477,7 @@
                 let tlValue = val;
                 if (debt.unit === 'GRAM') tlValue = val * rates.goldGram;
                 else if (debt.unit === 'CEYREK') tlValue = val * (rates.goldGram * 1.63);
+                else if (debt.unit === 'CUMHURIYET') tlValue = val * (rates.goldGram * 6.54);
                 else if (debt.unit === 'USD') tlValue = val * rates.usd;
 
                 state.txs.unshift({
@@ -512,6 +513,7 @@
                 let approxTL = d.amount;
                 if (d.unit === 'GRAM') approxTL = d.amount * rates.goldGram;
                 else if (d.unit === 'CEYREK') approxTL = d.amount * (rates.goldGram * 1.63);
+                else if (d.unit === 'CUMHURIYET') approxTL = d.amount * (rates.goldGram * 6.54);
                 else if (d.unit === 'USD') approxTL = d.amount * rates.usd;
 
                 list.innerHTML += `
