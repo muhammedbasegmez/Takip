@@ -103,11 +103,11 @@
             <h1>💰 Bütçem</h1>
         </header>
 
-        <!-- CANLI KUR BİLGİSİ BAR -->
+        <!-- DOVIZ.COM CANLI KUR BAR -->
         <div class="rates-bar">
             <span>Gram Altın: <strong id="rateGold" style="color:var(--yellow);">Yükleniyor...</strong></span>
             <span>USD: <strong id="rateUsd" style="color:var(--green);">Yükleniyor...</strong></span>
-            <span style="cursor:pointer;" onclick="fetchRates()">🔄</span>
+            <span style="cursor:pointer;" onclick="fetchRates()" title="Yenile">🔄</span>
         </div>
 
         <!-- 1. ÖZET SEKMESİ -->
@@ -157,14 +157,12 @@
 
         <!-- 3. BORÇLAR VE TASARRUFLAR SEKMESİ -->
         <div id="tabDebts" class="tab-content">
-            <!-- BORÇLAR -->
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                 <h3>Borç & Alacak Takibi</h3>
                 <button class="btn-sm-inline" onclick="openDebtModal()">+ Borç Ekle</button>
             </div>
             <div id="debtList"></div>
 
-            <!-- TASARRUF HEDEFLERİ -->
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; margin-top: 24px;">
                 <h3>Tasarruf Hedefleri</h3>
                 <button class="btn-sm-inline" onclick="openGoalModal()">+ Hedef Ekle</button>
@@ -203,7 +201,7 @@
         <button class="nav-btn" onclick="switchTab('tabSettings', this)"><span>⚙️</span><span>Ayarlar</span></button>
     </div>
 
-    <!-- İŞLEM EKLE MODAL -->
+    <!-- MODALLAR -->
     <div id="txModal" class="modal">
         <div class="modal-body">
             <h3 style="margin-bottom: 12px;">İşlem Ekle</h3>
@@ -222,7 +220,6 @@
         </div>
     </div>
 
-    <!-- BORÇ EKLE MODAL -->
     <div id="debtModal" class="modal">
         <div class="modal-body">
             <h3 style="margin-bottom: 12px;">Borç / Alacak Kaydı</h3>
@@ -242,7 +239,6 @@
         </div>
     </div>
 
-    <!-- TASARRUF HEDEFİ MODAL -->
     <div id="goalModal" class="modal">
         <div class="modal-body">
             <h3 style="margin-bottom: 12px;">Tasarruf Hedefi Ekle</h3>
@@ -255,7 +251,6 @@
         </div>
     </div>
 
-    <!-- SABİT İŞLEM MODAL -->
     <div id="recModal" class="modal">
         <div class="modal-body">
             <h3 style="margin-bottom: 12px;">Sabit İşlem Ekle</h3>
@@ -296,33 +291,41 @@
             renderGoals();
         }
 
+        // DOVIZ.COM DOĞRUDAN CANLI VERİ ÇEKİMİ
         async function fetchRates() {
             const rateGoldEl = document.getElementById('rateGold');
             const rateUsdEl = document.getElementById('rateUsd');
 
             try {
-                // Türkiye piyasa canlı satış kurları (Truncgil Finans API)
-                const res = await fetch('https://finans.truncgil.com/v4/today.json');
+                const proxyUrl = 'https://api.allorigins.win/get?url=';
+                const targetUrl = encodeURIComponent('https://www.doviz.com/');
+                
+                const res = await fetch(proxyUrl + targetUrl);
                 const data = await res.json();
 
-                if (data && data.rates) {
-                    const goldGram = parseFloat(data.rates["gram-altin"].Selling.replace('.', '').replace(',', '.'));
-                    const usd = parseFloat(data.rates["USD"].Selling.replace('.', '').replace(',', '.'));
+                if (data && data.contents) {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(data.contents, 'text/html');
 
-                    rates.goldGram = goldGram;
-                    rates.usd = usd;
+                    const goldEl = doc.querySelector('[data-socket-key="gram-altin"]');
+                    const usdEl = doc.querySelector('[data-socket-key="USD"]');
 
-                    rateGoldEl.innerText = `₺${rates.goldGram.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-                    rateUsdEl.innerText = `₺${rates.usd.toFixed(2)}`;
-                    
-                    renderDebts();
-                    return;
+                    if (goldEl && usdEl) {
+                        rates.goldGram = parseFloat(goldEl.getAttribute('data-socket-val').replace(',', '.'));
+                        rates.usd = parseFloat(usdEl.getAttribute('data-socket-val').replace(',', '.'));
+
+                        rateGoldEl.innerText = `₺${rates.goldGram.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+                        rateUsdEl.innerText = `₺${rates.usd.toFixed(2)}`;
+                        
+                        renderDebts();
+                        return;
+                    }
                 }
             } catch (e) {
-                console.log("Birinci API bağlantısı başarısız, yedek deneniyor...");
+                console.log("doviz.com canlı veri çekme başarısız, yedek servise geçiliyor...");
             }
 
-            // YEDEK SERVİS
+            // YEDEK SERVİS (Bağlantı kısıtlaması durumunda)
             try {
                 const resBackup = await fetch('https://api.genelpara.com/embed/altin.json');
                 const dataBackup = await resBackup.json();
@@ -337,8 +340,8 @@
                     renderDebts();
                 }
             } catch (err) {
-                rateGoldEl.innerText = `₺3,250 (Manuel)`;
-                rateUsdEl.innerText = `₺34.50 (Manuel)`;
+                rateGoldEl.innerText = `₺3.250 (Yedek)`;
+                rateUsdEl.innerText = `₺34.50 (Yedek)`;
             }
         }
 
@@ -466,7 +469,6 @@
             balEl.style.color = bal >= 0 ? 'var(--text)' : 'var(--red)';
         }
 
-        /* BORÇ VE TASARRUF İŞLEMLERİ */
         function saveDebt(e) {
             e.preventDefault();
             const debt = {
@@ -491,7 +493,6 @@
                 const val = parseFloat(payAmt);
                 debt.amount -= val;
 
-                // TL Karşılığı Hesapla & Gider Olarak Ekle
                 let tlValue = val;
                 if (debt.unit === 'GRAM') tlValue = val * rates.goldGram;
                 else if (debt.unit === 'CEYREK') tlValue = val * (rates.goldGram * 1.63);
