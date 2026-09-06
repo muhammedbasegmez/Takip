@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Bütçem">
+    <title>Bütçe & Gelir Gider Takibi</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --card-border: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-primary: #38bdf8;
+            --accent-green: #22c55e;
+            --accent-red: #ef4444;
+            --accent-orange: #f97316;
+            --accent-purple: #a855f7;
+            --radius-lg: 16px;
+            --radius-md: 10px;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-family);
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding-bottom: 90px;
+            user-select: none;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-top: env(safe-area-inset-top);
+        }
+
+        h1 {
+            font-size: 20px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-icon {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            color: var(--text-main);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        .summary-card {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        .balance-label {
+            font-size: 13px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .balance-amount {
+            font-size: 32px;
+            font-weight: 800;
+            margin: 6px 0 16px 0;
+            color: #ffffff;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-title {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .stat-value.green { color: var(--accent-green); }
+        .stat-value.red { color: var(--accent-red); }
+
+        .banner-alert {
+            background: rgba(56, 189, 248, 0.1);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: var(--radius-md);
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .banner-text {
+            font-size: 13px;
+            color: var(--accent-primary);
+        }
+
+        .banner-btn {
+            background: var(--accent-primary);
+            color: #0f172a;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .filter-section {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-md);
+            padding: 14px;
+            margin-bottom: 20px;
+        }
+
+        .search-box {
+            width: 100%;
+            background: var(--bg-color);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: var(--text-main);
+            font-size: 14px;
+            margin-bottom: 10px;
+            outline: none;
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .filter-select {
+            flex: 1;
+            background: var(--bg-color);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            padding: 8px 10px;
+            color: var(--text-main);
+            font-size: 13px;
+            outline: none;
+        }
+
+        .custom-date-container {
+            display: none;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .custom-date-input {
+            background: var(--bg-color);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            padding: 8px;
+            color: var(--text-main);
+            font-size: 12px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .section-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .list-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .tx-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-md);
+            padding: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .tx-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .tx-title {
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .tx-sub {
+            font-size: 12px;
+            color: var(--text-muted);
+            display: flex;
+            gap: 8px;
+        }
+
+        .tx-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .tx-amount {
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .tx-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .action-btn {
+            background: transparent;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 4px;
+            opacity: 0.8;
+        }
+
+        .action-btn:active {
+            transform: scale(1.1);
+        }
+
+        .nav-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #1e293b;
+            border-top: 1px solid var(--card-border);
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            padding: 8px 0 env(safe-area-inset-bottom) 0;
+            z-index: 100;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 11px;
+            cursor: pointer;
+            padding: 6px;
+        }
+
+        .nav-item.active {
+            color: var(--accent-primary);
+        }
+
+        .nav-icon {
+            font-size: 20px;
+        }
+
+        .fab-btn {
+            position: fixed;
+            bottom: 75px;
+            right: 20px;
+            background: var(--accent-primary);
+            color: #0f172a;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: bold;
+            border: none;
+            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.4);
+            cursor: pointer;
+            z-index: 99;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: flex-end;
+            z-index: 200;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            border-top: 1px solid var(--card-border);
+            border-radius: 24px 24px 0 0;
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 24px;
+            max-height: 85vh;
+            overflow-y: auto;
+            animation: slideUp 0.25s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-title { font-size: 18px; font-weight: 700; }
+        .close-btn { background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; }
+
+        .type-toggle {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            background: var(--bg-color);
+            border-radius: var(--radius-md);
+            padding: 4px;
+            margin-bottom: 16px;
+        }
+
+        .type-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            padding: 10px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .type-btn.active-gider { background: var(--accent-red); color: white; }
+        .type-btn.active-gelir { background: var(--accent-green); color: white; }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            background: var(--bg-color);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-md);
+            padding: 12px;
+            color: var(--text-main);
+            font-size: 15px;
+            outline: none;
+        }
+
+        .btn-submit {
+            width: 100%;
+            background: var(--accent-primary);
+            color: #0f172a;
+            border: none;
+            border-radius: var(--radius-md);
+            padding: 14px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .btn-danger { background: var(--accent-red); color: white; }
+        .btn-secondary { background: var(--card-border); color: var(--text-main); }
+
+        .pin-screen {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: var(--bg-color);
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .pin-screen.active { display: flex; }
+
+        .pin-dots {
+            display: flex;
+            gap: 16px;
+            margin: 30px 0;
+        }
+
+        .pin-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid var(--card-border);
+        }
+
+        .pin-dot.filled { background: var(--accent-primary); border-color: var(--accent-primary); }
+
+        .numpad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            max-width: 280px;
+            width: 100%;
+        }
+
+        .num-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            color: var(--text-main);
+            width: 65px;
+            height: 65px;
+            border-radius: 50%;
+            font-size: 24px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+            cursor: pointer;
+        }
+
+        .num-btn:active { background: var(--card-border); }
+
+        .chart-bar-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .chart-bar-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .chart-bar-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+        }
+
+        .chart-bar-track {
+            height: 10px;
+            background: var(--card-border);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .chart-bar-fill {
+            height: 100%;
+            background: var(--accent-primary);
+            border-radius: 5px;
+            transition: width 0.3s ease;
+        }
+
+        .tab-page { display: none; }
+        .tab-page.active { display: block; }
+
+        .badge {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .badge-income { background: rgba(34, 197, 94, 0.2); color: var(--accent-green); }
+        .badge-expense { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
+    </style>
+</head>
+<body>
+
+    <div id="pinScreen" class="pin-screen">
+        <h2 style="font-size: 22px; margin-bottom: 8px;">Bütçem</h2>
+        <p style="color: var(--text-muted); font-size: 14px;">Lütfen PIN kodunuzu girin</p>
+        <div class="pin-dots">
+            <div class="pin-dot" id="dot0"></div>
+            <div class="pin-dot" id="dot1"></div>
+            <div class="pin-dot" id="dot2"></div>
+            <div class="pin-dot" id="dot3"></div>
+        </div>
+        <div class="numpad">
+            <button class="num-btn" onclick="pressPin('1')">1</button>
+            <button class="num-btn" onclick="pressPin('2')">2</button>
+            <button class="num-btn" onclick="pressPin('3')">3</button>
+            <button class="num-btn" onclick="pressPin('4')">4</button>
+            <button class="num-btn" onclick="pressPin('5')">5</button>
+            <button class="num-btn" onclick="pressPin('6')">6</button>
+            <button class="num-btn" onclick="pressPin('7')">7</button>
+            <button class="num-btn" onclick="pressPin('8')">8</button>
+            <button class="num-btn" onclick="pressPin('9')">9</button>
+            <button class="num-btn" style="font-size: 16px;" onclick="clearPin()">C</button>
+            <button class="num-btn" onclick="pressPin('0')">0</button>
+            <button class="num-btn" style="font-size: 18px;" onclick="deletePin()">⌫</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1>💰 Bütçem</h1>
+            <button class="btn-icon" onclick="toggleLock()" title="Kilitle">🔒</button>
+        </header>
+
+        <div id="recurringBanner" class="banner-alert" style="display: none;">
+            <div class="banner-text">
+                <b>Aktarılacak Sabit İşlemVar</b>
+                <div style="font-size: 11px; opacity: 0.8;">Bu aya ait sabit gelir/giderlerinizi işleyin.</div>
+            </div>
+            <button class="banner-btn" onclick="processRecurringForCurrentMonth()">Aktar</button>
+        </div>
+
+        <div id="tabSummary" class="tab-page active">
+            <div class="summary-card">
+                <div class="balance-label">Net Bakiye</div>
+                <div class="balance-amount" id="netBalance">₺0.00</div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-title">Toplam Gelir</span>
+                        <span class="stat-value green" id="totalIncome">+₺0.00</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-title">Toplam Gider</span>
+                        <span class="stat-value red" id="totalExpense">-₺0.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="filter-section">
+                <input type="text" id="searchInput" class="search-box" placeholder="Açıklama veya kategori ara..." oninput="renderTransactions()">
+                <div class="filter-row">
+                    <select id="dateFilter" class="filter-select" onchange="handleFilterChange()">
+                        <option value="thisMonth">Bu Ay</option>
+                        <option value="today">Bugün</option>
+                        <option value="thisWeek">Bu Hafta</option>
+                        <option value="last30">Son 30 Gün</option>
+                        <option value="lastMonth">Geçen Ay</option>
+                        <option value="all">Tüm Zamanlar</option>
+                        <option value="custom">Özel Tarih</option>
+                    </select>
+                    <select id="categoryFilter" class="filter-select" onchange="renderTransactions()">
+                        <option value="all">Tüm Kategoriler</option>
+                    </select>
+                </div>
+                <div id="customDateBox" class="custom-date-container">
+                    <input type="date" id="startDate" class="custom-date-input" onchange="renderTransactions()">
+                    <input type="date" id="endDate" class="custom-date-input" onchange="renderTransactions()">
+                </div>
+            </div>
+
+            <div class="section-header">
+                <div class="section-title">İşlem Geçmişi</div>
+                <div id="txCount" style="font-size: 12px; color: var(--text-muted);">0 İşlem</div>
+            </div>
+
+            <div id="txList" class="list-container"></div>
+        </div>
+
+        <div id="tabAnalysis" class="tab-page">
+            <div class="section-header">
+                <div class="section-title">Kategori Dağılımı (Giderler)</div>
+            </div>
+            <div class="summary-card">
+                <div id="chartContainer" class="chart-bar-container"></div>
+            </div>
+        </div>
+
+        <div id="tabRecurring" class="tab-page">
+            <div class="section-header">
+                <div class="section-title">Aylık Sabit İşlemler</div>
+                <button class="banner-btn" onclick="openRecurringModal()">+ Yeni Sabit</button>
+            </div>
+            <div id="recurringList" class="list-container"></div>
+        </div>
+
+        <div id="tabSettings" class="tab-page">
+            <div class="section-header">
+                <div class="section-title">Kategori Yönetimi</div>
+            </div>
+            <div id="categoryManagerList" class="list-container" style="margin-bottom: 24px;"></div>
+
+            <div class="section-header">
+                <div class="section-title">Güvenlik ve Veri</div>
+            </div>
+            <div class="summary-card" style="display: flex; flex-direction: column; gap: 12px;">
+                <button class="btn-submit btn-secondary" onclick="setupPin()">🔑 PIN Kodu Değiştir/Ayarla</button>
+                <button class="btn-submit btn-secondary" onclick="exportCSV()">📊 CSV (Excel) Olarak İndir</button>
+                <button class="btn-submit btn-secondary" onclick="exportJSON()">💾 JSON Yedek İndir</button>
+                <button class="btn-submit btn-secondary" onclick="document.getElementById('importFile').click()">📂 JSON Yedek Yükle</button>
+                <input type="file" id="importFile" style="display: none;" accept=".json" onchange="importJSON(event)">
+                <button class="btn-submit btn-danger" onclick="resetAllData()">⚠️ Tüm Verileri Sıfırla</button>
+            </div>
+        </div>
+    </div>
+
+    <button class="fab-btn" onclick="openTxModal()">+</button>
+
+    <div class="nav-bar">
+        <button class="nav-item active" onclick="switchTab('tabSummary', this)">
+            <span class="nav-icon">📊</span>
+            <span>Özet</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('tabAnalysis', this)">
+            <span class="nav-icon">📈</span>
+            <span>Analiz</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('tabRecurring', this)">
+            <span class="nav-icon">🔄</span>
+            <span>Sabitler</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('tabSettings', this)">
+            <span class="nav-icon">⚙️</span>
+            <span>Ayarlar</span>
+        </button>
+    </div>
+
+    <div id="txModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title" id="modalTitle">Yeni İşlem Ekle</div>
+                <button class="close-btn" onclick="closeModal('txModal')">✕</button>
+            </div>
+            <div class="type-toggle">
+                <button id="btnGider" class="type-btn active-gider" onclick="setTxType('gider')">Gider</button>
+                <button id="btnGelir" class="type-btn" onclick="setTxType('gelir')">Gelir</button>
+            </div>
+            <form onsubmit="handleSaveTx(event)">
+                <div class="form-group">
+                    <label class="form-label">Tutar (₺)</label>
+                    <input type="number" step="0.01" id="txAmount" class="form-input" placeholder="0.00" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Kategori</label>
+                    <select id="txCategory" class="form-select" required></select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Tarih</label>
+                    <input type="date" id="txDate" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Açıklama</label>
+                    <input type="text" id="txDesc" class="form-input" placeholder="Örn: Market alışverişi">
+                </div>
+                <button type="submit" class="btn-submit">Kaydet</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="recurringModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Yeni Sabit İşlem</div>
+                <button class="close-btn" onclick="closeModal('recurringModal')">✕</button>
+            </div>
+            <div class="type-toggle">
+                <button id="recBtnGider" class="type-btn active-gider" onclick="setRecType('gider')">Gider</button>
+                <button id="recBtnGelir" class="type-btn" onclick="setRecType('gelir')">Gelir</button>
+            </div>
+            <form onsubmit="handleSaveRecurring(event)">
+                <div class="form-group">
+                    <label class="form-label">Tutar (₺)</label>
+                    <input type="number" step="0.01" id="recAmount" class="form-input" placeholder="0.00" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Kategori</label>
+                    <select id="recCategory" class="form-select" required></select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Her Ayın Günü (1 - 31)</label>
+                    <input type="number" min="1" max="31" id="recDay" class="form-input" value="1" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Açıklama</label>
+                    <input type="text" id="recDesc" class="form-input" placeholder="Örn: Ev Kirası" required>
+                </div>
+                <button type="submit" class="btn-submit">Sabit İşlem Ekle</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let state = {
+            transactions: JSON.parse(localStorage.getItem('bt_txs')) || [],
+            categories: JSON.parse(localStorage.getItem('bt_cats')) || ['Mutfak & Market', 'Kira & Fatura', 'Maaş', 'Ulaşım', 'Eğlence', 'Diğer'],
+            recurring: JSON.parse(localStorage.getItem('bt_rec')) || [],
+            processedMonths: JSON.parse(localStorage.getItem('bt_proc')) || [],
+            pin: localStorage.getItem('bt_pin') || null
+        };
+
+        let currentType = 'gider';
+        let currentRecType = 'gider';
+        let pinInput = '';
+
+        function init() {
+            if (state.pin) {
+                document.getElementById('pinScreen').classList.add('active');
+            }
+            populateCategories();
+            checkRecurringStatus();
+            renderTransactions();
+            renderRecurringList();
+            renderCategoryManager();
+            document.getElementById('txDate').valueAsDate = new Date();
+        }
+
+        function saveState() {
+            localStorage.setItem('bt_txs', JSON.stringify(state.transactions));
+            localStorage.setItem('bt_cats', JSON.stringify(state.categories));
+            localStorage.setItem('bt_rec', JSON.stringify(state.recurring));
+            localStorage.setItem('bt_proc', JSON.stringify(state.processedMonths));
+            localStorage.setItem('bt_pin', state.pin || '');
+        }
+
+        function pressPin(digit) {
+            if (pinInput.length < 4) {
+                pinInput += digit;
+                updatePinDots();
+                if (pinInput.length === 4) {
+                    setTimeout(verifyPin, 100);
+                }
+            }
+        }
+
+        function clearPin() { pinInput = ''; updatePinDots(); }
+        function deletePin() { pinInput = pinInput.slice(0, -1); updatePinDots(); }
+
+        function updatePinDots() {
+            for (let i = 0; i < 4; i++) {
+                const dot = document.getElementById(`dot${i}`);
+                if (i < pinInput.length) dot.classList.add('filled');
+                else dot.classList.remove('filled');
+            }
+        }
+
+        function verifyPin() {
+            if (pinInput === state.pin) {
+                document.getElementById('pinScreen').classList.remove('active');
+                pinInput = '';
+                updatePinDots();
+            } else {
+                alert('Hatalı PIN!');
+                clearPin();
+            }
+        }
+
+        function toggleLock() {
+            if (!state.pin) {
+                alert('Önce Ayarlar menüsünden bir PIN belirleyin.');
+                return;
+            }
+            pinInput = '';
+            updatePinDots();
+            document.getElementById('pinScreen').classList.add('active');
+        }
+
+        function setupPin() {
+            const newPin = prompt('4 Haneli Yeni PIN Kodunuzu Girin (İptal için boş bırakın):');
+            if (newPin !== null) {
+                if (newPin.length === 4 && !isNaN(newPin)) {
+                    state.pin = newPin;
+                    saveState();
+                    alert('PIN kodu başarıyla ayarlandı.');
+                } else if (newPin === '') {
+                    state.pin = null;
+                    saveState();
+                    alert('PIN koruması kaldırıldı.');
+                } else {
+                    alert('Lütfen sadece 4 haneli sayı girin.');
+                }
+            }
+        }
+
+        function switchTab(tabId, el) {
+            document.querySelectorAll('.tab-page').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            el.classList.add('active');
+
+            if (tabId === 'tabAnalysis') renderAnalysis();
+        }
+
+        function setTxType(type) {
+            currentType = type;
+            const btnGider = document.getElementById('btnGider');
+            const btnGelir = document.getElementById('btnGelir');
+            if (type === 'gider') {
+                btnGider.className = 'type-btn active-gider';
+                btnGelir.className = 'type-btn';
+            } else {
+                btnGider.className = 'type-btn';
+                btnGelir.className = 'type-btn active-gelir';
+            }
+        }
+
+        function setRecType(type) {
+            currentRecType = type;
+            const btnGider = document.getElementById('recBtnGider');
+            const btnGelir = document.getElementById('recBtnGelir');
+            if (type === 'gider') {
+                btnGider.className = 'type-btn active-gider';
+                btnGelir.className = 'type-btn';
+            } else {
+                btnGider.className = 'type-btn';
+                btnGelir.className = 'type-btn active-gelir';
+            }
+        }
+
+        function populateCategories() {
+            const txCat = document.getElementById('txCategory');
+            const recCat = document.getElementById('recCategory');
+            const filterCat = document.getElementById('categoryFilter');
+
+            txCat.innerHTML = '';
+            recCat.innerHTML = '';
+            filterCat.innerHTML = '<option value="all">Tüm Kategoriler</option>';
+
+            state.categories.forEach(cat => {
+                txCat.innerHTML += `<option value="${cat}">${cat}</option>`;
+                recCat.innerHTML += `<option value="${cat}">${cat}</option>`;
+                filterCat.innerHTML += `<option value="${cat}">${cat}</option>`;
+            });
+        }
+
+        function openTxModal() { document.getElementById('txModal').classList.add('active'); }
+        function openRecurringModal() { document.getElementById('recurringModal').classList.add('active'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+        function handleSaveTx(e) {
+            e.preventDefault();
+            const tx = {
+                id: Date.now(),
+                type: currentType,
+                amount: parseFloat(document.getElementById('txAmount').value),
+                category: document.getElementById('txCategory').value,
+                date: document.getElementById('txDate').value,
+                desc: document.getElementById('txDesc').value || document.getElementById('txCategory').value
+            };
+            state.transactions.unshift(tx);
+            saveState();
+            renderTransactions();
+            closeModal('txModal');
+            document.getElementById('txAmount').value = '';
+            document.getElementById('txDesc').value = '';
+        }
+
+        function duplicateTx(id) {
+            const tx = state.transactions.find(t => t.id === id);
+            if (tx) {
+                const newTx = {
+                    ...tx,
+                    id: Date.now(),
+                    date: new Date().toISOString().split('T')[0]
+                };
+                state.transactions.unshift(newTx);
+                saveState();
+                renderTransactions();
+            }
+        }
+
+        function deleteTx(id) {
+            if (confirm('Bu işlemi silmek istediğinize emin misiniz?')) {
+                state.transactions = state.transactions.filter(t => t.id !== id);
+                saveState();
+                renderTransactions();
+            }
+        }
+
+        function handleFilterChange() {
+            const val = document.getElementById('dateFilter').value;
+            document.getElementById('customDateBox').style.display = (val === 'custom') ? 'grid' : 'none';
+            renderTransactions();
+        }
+
+        function filterTransactions() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const dateFilter = document.getElementById('dateFilter').value;
+            const categoryFilter = document.getElementById('categoryFilter').value;
+
+            const now = new Date();
+
+            return state.transactions.filter(tx => {
+                const txDate = new Date(tx.date);
+
+                const matchesSearch = tx.desc.toLowerCase().includes(search) || tx.category.toLowerCase().includes(search);
+                const matchesCategory = (categoryFilter === 'all') || (tx.category === categoryFilter);
+
+                let matchesDate = true;
+                if (dateFilter === 'thisMonth') {
+                    matchesDate = txDate.getMonth() === now.getMonth() && txDate.getFullYear() === now.getFullYear();
+                } else if (dateFilter === 'today') {
+                    matchesDate = txDate.toDateString() === now.toDateString();
+                } else if (dateFilter === 'thisWeek') {
+                    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                    matchesDate = txDate >= weekAgo;
+                } else if (dateFilter === 'last30') {
+                    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                    matchesDate = txDate >= thirtyDaysAgo;
+                } else if (dateFilter === 'lastMonth') {
+                    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                    matchesDate = txDate.getMonth() === lastMonth.getMonth() && txDate.getFullYear() === lastMonth.getFullYear();
+                } else if (dateFilter === 'custom') {
+                    const start = document.getElementById('startDate').value;
+                    const end = document.getElementById('endDate').value;
+                    if (start) matchesDate = matchesDate && (tx.date >= start);
+                    if (end) matchesDate = matchesDate && (tx.date <= end);
+                }
+
+                return matchesSearch && matchesCategory && matchesDate;
+            });
+        }
+
+        function renderTransactions() {
+            const list = document.getElementById('txList');
+            const filtered = filterTransactions();
+
+            list.innerHTML = '';
+            let totalInc = 0;
+            let totalExp = 0;
+
+            document.getElementById('txCount').innerText = `${filtered.length} İşlem`;
+
+            if (filtered.length === 0) {
+                list.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">İşlem bulunamadı.</div>';
+            } else {
+                filtered.forEach(tx => {
+                    if (tx.type === 'gelir') totalInc += tx.amount;
+                    else totalExp += tx.amount;
+
+                    const isIncome = tx.type === 'gelir';
+                    const amountClass = isIncome ? 'stat-value green' : 'stat-value red';
+                    const sign = isIncome ? '+' : '-';
+
+                    list.innerHTML += `
+                        <div class="tx-card">
+                            <div class="tx-info">
+                                <div class="tx-title">${tx.desc}</div>
+                                <div class="tx-sub">
+                                    <span>${tx.category}</span> • <span>${tx.date}</span>
+                                </div>
+                            </div>
+                            <div class="tx-right">
+                                <div class="tx-amount ${amountClass}">${sign}₺${tx.amount.toFixed(2)}</div>
+                                <div class="tx-actions">
+                                    <button class="action-btn" onclick="duplicateTx(${tx.id})" title="Klonla">📋</button>
+                                    <button class="action-btn" onclick="deleteTx(${tx.id})" title="Sil">🗑️</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            document.getElementById('totalIncome').innerText = `+₺${totalInc.toFixed(2)}`;
+            document.getElementById('totalExpense').innerText = `-₺${totalExp.toFixed(2)}`;
+            const balance = totalInc - totalExp;
+            const netEl = document.getElementById('netBalance');
+            netEl.innerText = `${balance >= 0 ? '' : '-'}₺${Math.abs(balance).toFixed(2)}`;
+            netEl.style.color = balance >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+        }
+
+        function handleSaveRecurring(e) {
+            e.preventDefault();
+            const rec = {
+                id: Date.now(),
+                type: currentRecType,
+                amount: parseFloat(document.getElementById('recAmount').value),
+                category: document.getElementById('recCategory').value,
+                day: parseInt(document.getElementById('recDay').value),
+                desc: document.getElementById('recDesc').value
+            };
+            state.recurring.push(rec);
+            saveState();
+            renderRecurringList();
+            checkRecurringStatus();
+            closeModal('recurringModal');
+        }
+
+        function deleteRecurring(id) {
+            state.recurring = state.recurring.filter(r => r.id !== id);
+            saveState();
+            renderRecurringList();
+            checkRecurringStatus();
+        }
+
+        function renderRecurringList() {
+            const list = document.getElementById('recurringList');
+            list.innerHTML = '';
+            if (state.recurring.length === 0) {
+                list.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">Tanımlı sabit işlem yok.</div>';
+                return;
+            }
+
+            state.recurring.forEach(rec => {
+                const badge = rec.type === 'gelir' ? '<span class="badge badge-income">GELİR</span>' : '<span class="badge badge-expense">GİDER</span>';
+                list.innerHTML += `
+                    <div class="tx-card">
+                        <div class="tx-info">
+                            <div class="tx-title">${rec.desc} ${badge}</div>
+                            <div class="tx-sub">${rec.category} • Her ayın ${rec.day}. günü</div>
+                        </div>
+                        <div class="tx-right">
+                            <div class="tx-amount">₺${rec.amount.toFixed(2)}</div>
+                            <button class="action-btn" onclick="deleteRecurring(${rec.id})">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function checkRecurringStatus() {
+            const currentMonthKey = new Date().toISOString().slice(0, 7);
+            const isProcessed = state.processedMonths.includes(currentMonthKey);
+
+            if (!isProcessed && state.recurring.length > 0) {
+                document.getElementById('recurringBanner').style.display = 'flex';
+            } else {
+                document.getElementById('recurringBanner').style.display = 'none';
+            }
+        }
+
+        function processRecurringForCurrentMonth() {
+            const currentMonthKey = new Date().toISOString().slice(0, 7);
+            const now = new Date();
+
+            state.recurring.forEach(rec => {
+                const dateStr = `${currentMonthKey}-${String(rec.day).padStart(2, '0')}`;
+                state.transactions.unshift({
+                    id: Date.now() + Math.random(),
+                    type: rec.type,
+                    amount: rec.amount,
+                    category: rec.category,
+                    date: dateStr,
+                    desc: `[Sabit] ${rec.desc}`
+                });
+            });
+
+            state.processedMonths.push(currentMonthKey);
+            saveState();
+            checkRecurringStatus();
+            renderTransactions();
+            alert('Sabit işlemleriniz bu ay için başarıyla aktarıldı!');
+        }
+
+        function renderAnalysis() {
+            const container = document.getElementById('chartContainer');
+            container.innerHTML = '';
+
+            const expenses = filterTransactions().filter(t => t.type === 'gider');
+            const categoryTotals = {};
+            let totalExp = 0;
+
+            expenses.forEach(t => {
+                categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
+                totalExp += t.amount;
+            });
+
+            if (totalExp === 0) {
+                container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">Gider verisi bulunamadı.</div>';
+                return;
+            }
+
+            Object.keys(categoryTotals).sort((a,b) => categoryTotals[b] - categoryTotals[a]).forEach(cat => {
+                const amount = categoryTotals[cat];
+                const percentage = ((amount / totalExp) * 100).toFixed(1);
+
+                container.innerHTML += `
+                    <div class="chart-bar-item">
+                        <div class="chart-bar-header">
+                            <span>${cat}</span>
+                            <span>₺${amount.toFixed(2)} (%${percentage})</span>
+                        </div>
+                        <div class="chart-bar-track">
+                            <div class="chart-bar-fill" style="width: ${percentage}%"></div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function renderCategoryManager() {
+            const list = document.getElementById('categoryManagerList');
+            list.innerHTML = '';
+
+            state.categories.forEach((cat, index) => {
+                list.innerHTML += `
+                    <div class="tx-card">
+                        <div class="tx-title">${cat}</div>
+                        <div class="tx-actions">
+                            <button class="action-btn" onclick="renameCategory(${index})">✏️</button>
+                            <button class="action-btn" onclick="deleteCategory(${index})">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            list.innerHTML += `<button class="btn-submit btn-secondary" style="margin-top: 10px;" onclick="addCategory()">+ Yeni Kategori Ekle</button>`;
+        }
+
+        function addCategory() {
+            const name = prompt('Yeni Kategori Adı:');
+            if (name && !state.categories.includes(name)) {
+                state.categories.push(name);
+                saveState();
+                populateCategories();
+                renderCategoryManager();
+            }
+        }
+
+        function renameCategory(index) {
+            const oldName = state.categories[index];
+            const newName = prompt('Kategori Adını Düzenle:', oldName);
+            if (newName && newName !== oldName) {
+                state.categories[index] = newName;
+                state.transactions.forEach(t => { if (t.category === oldName) t.category = newName; });
+                state.recurring.forEach(r => { if (r.category === oldName) r.category = newName; });
+                saveState();
+                populateCategories();
+                renderTransactions();
+                renderCategoryManager();
+            }
+        }
+
+        function deleteCategory(index) {
+            if (confirm('Bu kategoriyi silmek istediğinizden emin misiniz?')) {
+                state.categories.splice(index, 1);
+                saveState();
+                populateCategories();
+                renderCategoryManager();
+            }
+        }
+
+        function exportCSV() {
+            let csv = "\uFEFFTarih,Tür,Kategori,Tutar,Açıklama\n";
+            state.transactions.forEach(t => {
+                csv += `"${t.date}","${t.type}","${t.category}","${t.amount}","${t.desc}"\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `Butce_Raporu_${new Date().toISOString().slice(0,10)}.csv`;
+            link.click();
+        }
+
+        function exportJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `Butce_Yedek_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function importJSON(event) {
+            const fileReader = new FileReader();
+            fileReader.onload = function (e) {
+                try {
+                    const importedState = JSON.parse(e.target.result);
+                    if (importedState.transactions && importedState.categories) {
+                        state = importedState;
+                        saveState();
+                        init();
+                        alert('Yedek başarıyla yüklendi!');
+                    } else {
+                        alert('Geçersiz yedek dosyası.');
+                    }
+                } catch (err) {
+                    alert('Hata: Dosya okunamadı.');
+                }
+            };
+            fileReader.readAsText(event.target.files[0]);
+        }
+
+        function resetAllData() {
+            if (confirm('TÜM VERİLERİNİZ SİLİNECEK! Emin misiniz?')) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
