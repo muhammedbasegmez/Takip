@@ -47,7 +47,6 @@
         .tx-actions { display: flex; gap: 6px; }
         .btn-sm { background: none; border: none; font-size: 16px; cursor: pointer; padding: 4px; }
 
-        /* NAV & FAB */
         .nav { 
             position: fixed; 
             bottom: 0; left: 0; right: 0; 
@@ -103,11 +102,11 @@
             <h1>💰 Bütçem</h1>
         </header>
 
-        <!-- DOVIZ.COM CANLI KUR BAR -->
+        <!-- CANLI KUR BAR -->
         <div class="rates-bar">
             <span>Gram Altın: <strong id="rateGold" style="color:var(--yellow);">Yükleniyor...</strong></span>
             <span>USD: <strong id="rateUsd" style="color:var(--green);">Yükleniyor...</strong></span>
-            <span style="cursor:pointer;" onclick="fetchRates()" title="Yenile">🔄</span>
+            <span style="cursor:pointer;" onclick="editRatesManual()" title="Manuel Kur Gir">✏️ Kurları Düzenle</span>
         </div>
 
         <!-- 1. ÖZET SEKMESİ -->
@@ -270,7 +269,7 @@
     </div>
 
     <script>
-        let rates = { goldGram: 3250, usd: 34.50 };
+        let rates = JSON.parse(localStorage.getItem('b_rates')) || { goldGram: 3300, usd: 34.50 };
 
         let state = {
             txs: JSON.parse(localStorage.getItem('b_txs')) || [],
@@ -283,6 +282,7 @@
         function init() {
             document.getElementById('txDate').valueAsDate = new Date();
             updateCatDropdowns();
+            updateRatesUI();
             fetchRates();
             render();
             renderRecs();
@@ -291,58 +291,39 @@
             renderGoals();
         }
 
-        // DOVIZ.COM DOĞRUDAN CANLI VERİ ÇEKİMİ
-        async function fetchRates() {
-            const rateGoldEl = document.getElementById('rateGold');
-            const rateUsdEl = document.getElementById('rateUsd');
+        function updateRatesUI() {
+            document.getElementById('rateGold').innerText = `₺${rates.goldGram.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+            document.getElementById('rateUsd').innerText = `₺${rates.usd.toFixed(2)}`;
+        }
 
+        // KESİNTİSİZ DOĞRUDAN SERVİS
+        async function fetchRates() {
             try {
-                const proxyUrl = 'https://api.allorigins.win/get?url=';
-                const targetUrl = encodeURIComponent('https://www.doviz.com/');
-                
-                const res = await fetch(proxyUrl + targetUrl);
+                const res = await fetch('https://api.genelpara.com/embed/altin.json');
                 const data = await res.json();
 
-                if (data && data.contents) {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(data.contents, 'text/html');
-
-                    const goldEl = doc.querySelector('[data-socket-key="gram-altin"]');
-                    const usdEl = doc.querySelector('[data-socket-key="USD"]');
-
-                    if (goldEl && usdEl) {
-                        rates.goldGram = parseFloat(goldEl.getAttribute('data-socket-val').replace(',', '.'));
-                        rates.usd = parseFloat(usdEl.getAttribute('data-socket-val').replace(',', '.'));
-
-                        rateGoldEl.innerText = `₺${rates.goldGram.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-                        rateUsdEl.innerText = `₺${rates.usd.toFixed(2)}`;
-                        
-                        renderDebts();
-                        return;
-                    }
-                }
-            } catch (e) {
-                console.log("doviz.com canlı veri çekme başarısız, yedek servise geçiliyor...");
-            }
-
-            // YEDEK SERVİS (Bağlantı kısıtlaması durumunda)
-            try {
-                const resBackup = await fetch('https://api.genelpara.com/embed/altin.json');
-                const dataBackup = await resBackup.json();
-
-                if (dataBackup && dataBackup.GA) {
-                    rates.goldGram = parseFloat(dataBackup.GA.satis);
-                    rates.usd = parseFloat(dataBackup.USD.satis);
-
-                    rateGoldEl.innerText = `₺${rates.goldGram.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-                    rateUsdEl.innerText = `₺${rates.usd.toFixed(2)}`;
-                    
+                if (data && data.GA) {
+                    rates.goldGram = parseFloat(data.GA.satis);
+                    rates.usd = parseFloat(data.USD.satis);
+                    localStorage.setItem('b_rates', JSON.stringify(rates));
+                    updateRatesUI();
                     renderDebts();
                 }
-            } catch (err) {
-                rateGoldEl.innerText = `₺3.250 (Yedek)`;
-                rateUsdEl.innerText = `₺34.50 (Yedek)`;
+            } catch (e) {
+                console.log("Canlı kur çekilemedi, kayıtlı kurlar kullanılıyor.");
             }
+        }
+
+        function editRatesManual() {
+            const newGold = prompt("Gram Altın Fiyatı (₺):", rates.goldGram);
+            const newUsd = prompt("Dolar Fiyatı (₺):", rates.usd);
+
+            if (newGold && !isNaN(newGold)) rates.goldGram = parseFloat(newGold);
+            if (newUsd && !isNaN(newUsd)) rates.usd = parseFloat(newUsd);
+
+            localStorage.setItem('b_rates', JSON.stringify(rates));
+            updateRatesUI();
+            renderDebts();
         }
 
         function save() {
