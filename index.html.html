@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Bütçe & Finans Takip</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --border: #334155;
+            --text: #f8fafc;
+            --muted: #94a3b8;
+            --blue: #38bdf8;
+            --green: #22c55e;
+            --red: #ef4444;
+            --yellow: #eab308;
+            --purple: #a855f7;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+        
+        body { 
+            background: var(--bg); 
+            color: var(--text); 
+            padding-bottom: calc(100px + env(safe-area-inset-bottom)); 
+        }
+
+        .container { max-width: 480px; margin: 0 auto; padding: 16px; }
+
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-top: env(safe-area-inset-top); }
+        h1 { font-size: 20px; }
+
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+        .balance { font-size: 28px; font-weight: bold; margin: 8px 0; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+        .input, .select { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 10px; border-radius: 8px; font-size: 14px; margin-bottom: 8px; outline: none; }
+        .btn { width: 100%; background: var(--blue); color: #0f172a; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; border-radius: 8px; }
+        .btn-red { background: var(--red); color: white; }
+        .btn-sec { background: var(--border); color: var(--text); }
+        .btn-sm-inline { background: var(--blue); color: #0f172a; border: none; padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer; }
+
+        .tx-item { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .tx-actions { display: flex; gap: 6px; }
+        .btn-sm { background: none; border: none; font-size: 16px; cursor: pointer; padding: 4px; }
+
+        /* NAV & FAB */
+        .nav { 
+            position: fixed; 
+            bottom: 0; left: 0; right: 0; 
+            background: var(--card); 
+            border-top: 1px solid var(--border); 
+            display: flex; justify-content: space-around; 
+            padding-top: 8px;
+            padding-bottom: calc(8px + env(safe-area-inset-bottom)); 
+            z-index: 90;
+        }
+
+        .nav-btn { background: none; border: none; color: var(--muted); font-size: 10px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+        .nav-btn.active { color: var(--blue); }
+
+        .fab { 
+            position: fixed; 
+            bottom: calc(75px + env(safe-area-inset-bottom)); 
+            right: 20px; 
+            background: var(--blue); 
+            color: #0f172a; 
+            width: 54px; height: 54px; 
+            border-radius: 50%; 
+            font-size: 28px; border: none; font-weight: bold; 
+            cursor: pointer; 
+            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.4);
+            z-index: 100;
+        }
+
+        .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: none; align-items: flex-end; z-index: 200; }
+        .modal.active { display: flex; }
+        .modal-body { 
+            background: var(--card); width: 100%; max-width: 480px; margin: 0 auto; 
+            border-radius: 16px 16px 0 0; padding: 20px; 
+            padding-bottom: calc(20px + env(safe-area-inset-bottom));
+            max-height: 85vh; overflow-y: auto;
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .progress-track { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; margin-top: 6px; }
+        .progress-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+
+        .rates-bar { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); background: var(--bg); padding: 8px 12px; border-radius: 8px; margin-bottom: 12px; border: 1px solid var(--border); }
+        .badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+        .badge-gold { background: rgba(234, 179, 8, 0.2); color: var(--yellow); }
+        .badge-debt { background: rgba(239, 68, 68, 0.2); color: var(--red); }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>💰 Bütçem</h1>
+        </header>
+
+        <!-- CANLI KUR BİLGİSİ BAR() -->
+        <div class="rates-bar">
+            <span>Gram Altın: <strong id="rateGold" style="color:var(--yellow);">Yükleniyor...</strong></span>
+            <span>USD: <strong id="rateUsd" style="color:var(--green);">Yükleniyor...</strong></span>
+            <span style="cursor:pointer;" onclick="fetchRates()">🔄</span>
+        </div>
+
+        <!-- 1. ÖZET SEKMESİ -->
+        <div id="tabSummary" class="tab-content active">
+            <div class="card">
+                <div style="font-size: 12px; color: var(--muted);">NET BAKİYE</div>
+                <div id="netBalance" class="balance">₺0.00</div>
+                <div class="grid-2" style="margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px;">
+                    <div><div style="font-size: 11px; color: var(--muted);">GELİR</div><div id="totalIncome" style="color: var(--green); font-weight: bold;">+₺0.00</div></div>
+                    <div><div style="font-size: 11px; color: var(--muted);">GİDER</div><div id="totalExpense" style="color: var(--red); font-weight: bold;">-₺0.00</div></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <input type="text" id="searchInput" class="input" placeholder="Arama yap..." oninput="render()">
+                <div class="grid-2">
+                    <select id="dateFilter" class="select" onchange="render()">
+                        <option value="thisMonth">Bu Ay</option>
+                        <option value="all">Tüm Zamanlar</option>
+                    </select>
+                    <select id="catFilter" class="select" onchange="render()">
+                        <option value="all">Tüm Kategoriler</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="txList"></div>
+        </div>
+
+        <!-- 2. ANALİZ SEKMESİ -->
+        <div id="tabAnalysis" class="tab-content">
+            <h3 style="margin-bottom: 8px;">Gelir vs. Gider Karşılaştırması</h3>
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px;">
+                    <span>Toplam Gelir: <strong id="analysisInc" style="color: var(--green);">₺0</strong></span>
+                    <span>Toplam Gider: <strong id="analysisExp" style="color: var(--red);">₺0</strong></span>
+                </div>
+                <div class="progress-track" style="height: 12px; display: flex;">
+                    <div id="incBar" style="background: var(--green); height: 100%; width: 50%;"></div>
+                    <div id="expBar" style="background: var(--red); height: 100%; width: 50%;"></div>
+                </div>
+            </div>
+
+            <h3 style="margin-bottom: 8px;">Kategori Bazlı Gider Dağılımı</h3>
+            <div id="chartList" class="card"></div>
+        </div>
+
+        <!-- 3. BORÇLAR VE TASARRUFLAR SEKMESİ (YENİ) -->
+        <div id="tabDebts" class="tab-content">
+            <!-- BORÇLAR -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h3>Borç & Alacak Takibi</h3>
+                <button class="btn-sm-inline" onclick="openDebtModal()">+ Borç Ekle</button>
+            </div>
+            <div id="debtList"></div>
+
+            <!-- TASARRUF HEDEFLERİ -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; margin-top: 24px;">
+                <h3>Tasarruf Hedefleri</h3>
+                <button class="btn-sm-inline" onclick="openGoalModal()">+ Hedef Ekle</button>
+            </div>
+            <div id="goalList"></div>
+        </div>
+
+        <!-- 4. SABİTLER SEKMESİ -->
+        <div id="tabRecurring" class="tab-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h3>Aylık Sabit İşlemler</h3>
+                <button class="btn-sm-inline" onclick="openRecModal()">+ Ekle</button>
+            </div>
+            <div id="recList"></div>
+        </div>
+
+        <!-- 5. AYARLAR SEKMESİ -->
+        <div id="tabSettings" class="tab-content">
+            <h3 style="margin-bottom: 12px;">Kategoriler</h3>
+            <div id="catList" style="margin-bottom: 16px;"></div>
+            <button class="btn btn-sec" style="margin-bottom: 12px;" onclick="addCategory()">+ Kategori Ekle</button>
+            <button class="btn btn-sec" style="margin-bottom: 12px;" onclick="exportCSV()">📊 CSV (Excel) İndir</button>
+            <button class="btn btn-red" onclick="resetData()">⚠️ Verileri Sıfırla</button>
+        </div>
+    </div>
+
+    <!-- ARTI (+) BUTONU -->
+    <button class="fab" onclick="openTxModal()">+</button>
+
+    <!-- ALT MENÜ -->
+    <div class="nav">
+        <button class="nav-btn active" onclick="switchTab('tabSummary', this)"><span>📊</span><span>Özet</span></button>
+        <button class="nav-btn" onclick="switchTab('tabAnalysis', this)"><span>📈</span><span>Analiz</span></button>
+        <button class="nav-btn" onclick="switchTab('tabDebts', this)"><span>⚖️</span><span>Borç/Tasarruf</span></button>
+        <button class="nav-btn" onclick="switchTab('tabRecurring', this)"><span>🔄</span><span>Sabitler</span></button>
+        <button class="nav-btn" onclick="switchTab('tabSettings', this)"><span>⚙️</span><span>Ayarlar</span></button>
+    </div>
+
+    <!-- İŞLEM EKLE MODAL -->
+    <div id="txModal" class="modal">
+        <div class="modal-body">
+            <h3 style="margin-bottom: 12px;">İşlem Ekle</h3>
+            <form onsubmit="saveTx(event)">
+                <select id="txType" class="select">
+                    <option value="gider">Gider</option>
+                    <option value="gelir">Gelir</option>
+                </select>
+                <input type="number" step="0.01" id="txAmount" class="input" placeholder="Tutar (₺)" required>
+                <select id="txCat" class="select" required></select>
+                <input type="date" id="txDate" class="input" required>
+                <input type="text" id="txDesc" class="input" placeholder="Açıklama">
+                <button type="submit" class="btn">Kaydet</button>
+                <button type="button" class="btn btn-sec" style="margin-top: 8px;" onclick="closeModals()">İptal</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- BORÇ EKLE MODAL -->
+    <div id="debtModal" class="modal">
+        <div class="modal-body">
+            <h3 style="margin-bottom: 12px;">Borç / Alacak Kaydı</h3>
+            <form onsubmit="saveDebt(event)">
+                <input type="text" id="debtTitle" class="input" placeholder="Borçlu/Alacaklı Adı (Örn: Ahmet)" required>
+                <select id="debtUnit" class="select">
+                    <option value="GRAM">Gram Altın</option>
+                    <option value="CEYREK">Çeyrek Altın</option>
+                    <option value="USD">Dolar ($)</option>
+                    <option value="TRY">Türk Lirası (₺)</option>
+                </select>
+                <input type="number" step="0.01" id="debtAmount" class="input" placeholder="Miktar (Örn: 10 Gram)" required>
+                <input type="text" id="debtDueDate" class="input" placeholder="Vade / Ödeme Tarihi (İsteğe Bağlı)">
+                <button type="submit" class="btn">Borç Kaydet</button>
+                <button type="button" class="btn btn-sec" style="margin-top: 8px;" onclick="closeModals()">İptal</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- TASARRUF HEDEFİ MODAL -->
+    <div id="goalModal" class="modal">
+        <div class="modal-body">
+            <h3 style="margin-bottom: 12px;">Tasarruf Hedefi Ekle</h3>
+            <form onsubmit="saveGoal(event)">
+                <input type="text" id="goalTitle" class="input" placeholder="Hedef Adı (Örn: Tatil Fonu)" required>
+                <input type="number" step="0.01" id="goalTarget" class="input" placeholder="Hedeflenen Tutar (₺)" required>
+                <button type="submit" class="btn">Hedef Oluştur</button>
+                <button type="button" class="btn btn-sec" style="margin-top: 8px;" onclick="closeModals()">İptal</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- SABİT İŞLEM MODAL -->
+    <div id="recModal" class="modal">
+        <div class="modal-body">
+            <h3 style="margin-bottom: 12px;">Sabit İşlem Ekle</h3>
+            <form onsubmit="saveRec(event)">
+                <select id="recType" class="select">
+                    <option value="gider">Gider</option>
+                    <option value="gelir">Gelir</option>
+                </select>
+                <input type="number" step="0.01" id="recAmount" class="input" placeholder="Tutar (₺)" required>
+                <select id="recCat" class="select" required></select>
+                <input type="number" min="1" max="31" id="recDay" class="input" placeholder="Her ayın hangi günü? (1-31)" required>
+                <input type="text" id="recDesc" class="input" placeholder="Açıklama" required>
+                <button type="submit" class="btn">Kaydet</button>
+                <button type="button" class="btn btn-sec" style="margin-top: 8px;" onclick="closeModals()">İptal</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let rates = { goldGram: 3200, usd: 34.50 };
+
+        let state = {
+            txs: JSON.parse(localStorage.getItem('b_txs')) || [],
+            cats: JSON.parse(localStorage.getItem('b_cats')) || ['Mutfak', 'Kira & Fatura', 'Maaş', 'Ulaşım', 'Eğlence', 'Diğer'],
+            recs: JSON.parse(localStorage.getItem('b_recs')) || [],
+            debts: JSON.parse(localStorage.getItem('b_debts')) || [],
+            goals: JSON.parse(localStorage.getItem('b_goals')) || []
+        };
+
+        function init() {
+            document.getElementById('txDate').valueAsDate = new Date();
+            updateCatDropdowns();
+            fetchRates();
+            render();
+            renderRecs();
+            renderCats();
+            renderDebts();
+            renderGoals();
+        }
+
+        async function fetchRates() {
+            try {
+                const res = await fetch('https://open.er-api.com/v6/latest/USD');
+                const data = await res.json();
+                if (data && data.rates) {
+                    const usdTry = data.rates.TRY || 34.50;
+                    // Yaklaşık ons hesabı üzerinden Gram Altın TL hesabı
+                    const goldGram = (2500 / 31.1035) * usdTry; 
+                    rates.usd = usdTry;
+                    rates.goldGram = goldGram;
+
+                    document.getElementById('rateGold').innerText = `₺${rates.goldGram.toFixed(0)}`;
+                    document.getElementById('rateUsd').innerText = `₺${rates.usd.toFixed(2)}`;
+                    renderDebts();
+                }
+            } catch (e) {
+                document.getElementById('rateGold').innerText = `₺3,200 (Tahmini)`;
+                document.getElementById('rateUsd').innerText = `₺34.50 (Tahmini)`;
+            }
+        }
+
+        function save() {
+            localStorage.setItem('b_txs', JSON.stringify(state.txs));
+            localStorage.setItem('b_cats', JSON.stringify(state.cats));
+            localStorage.setItem('b_recs', JSON.stringify(state.recs));
+            localStorage.setItem('b_debts', JSON.stringify(state.debts));
+            localStorage.setItem('b_goals', JSON.stringify(state.goals));
+        }
+
+        function switchTab(tabId, btn) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            btn.classList.add('active');
+            if(tabId === 'tabAnalysis') renderAnalysis();
+        }
+
+        function updateCatDropdowns() {
+            const txCat = document.getElementById('txCat');
+            const recCat = document.getElementById('recCat');
+            const catFilter = document.getElementById('catFilter');
+
+            txCat.innerHTML = '';
+            recCat.innerHTML = '';
+            catFilter.innerHTML = '<option value="all">Tüm Kategoriler</option>';
+
+            state.cats.forEach(c => {
+                txCat.innerHTML += `<option value="${c}">${c}</option>`;
+                recCat.innerHTML += `<option value="${c}">${c}</option>`;
+                catFilter.innerHTML += `<option value="${c}">${c}</option>`;
+            });
+        }
+
+        function openTxModal() { document.getElementById('txModal').classList.add('active'); }
+        function openRecModal() { document.getElementById('recModal').classList.add('active'); }
+        function openDebtModal() { document.getElementById('debtModal').classList.add('active'); }
+        function openGoalModal() { document.getElementById('goalModal').classList.add('active'); }
+        function closeModals() { document.querySelectorAll('.modal').forEach(m => m.classList.remove('active')); }
+
+        function saveTx(e) {
+            e.preventDefault();
+            const tx = {
+                id: Date.now(),
+                type: document.getElementById('txType').value,
+                amount: parseFloat(document.getElementById('txAmount').value),
+                cat: document.getElementById('txCat').value,
+                date: document.getElementById('txDate').value,
+                desc: document.getElementById('txDesc').value || document.getElementById('txCat').value
+            };
+            state.txs.unshift(tx);
+            save();
+            render();
+            closeModals();
+        }
+
+        function cloneTx(id) {
+            const tx = state.txs.find(t => t.id === id);
+            if (tx) {
+                const newTx = { ...tx, id: Date.now(), date: new Date().toISOString().split('T')[0] };
+                state.txs.unshift(newTx);
+                save();
+                render();
+            }
+        }
+
+        function deleteTx(id) {
+            state.txs = state.txs.filter(t => t.id !== id);
+            save();
+            render();
+        }
+
+        function render() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const dFilter = document.getElementById('dateFilter').value;
+            const cFilter = document.getElementById('catFilter').value;
+            const now = new Date();
+
+            let filtered = state.txs.filter(t => {
+                const tDate = new Date(t.date);
+                const matchSearch = t.desc.toLowerCase().includes(search) || t.cat.toLowerCase().includes(search);
+                const matchCat = cFilter === 'all' || t.cat === cFilter;
+                let matchDate = true;
+
+                if (dFilter === 'thisMonth') {
+                    matchDate = tDate.getMonth() === now.getMonth() && tDate.getFullYear() === now.getFullYear();
+                }
+                return matchSearch && matchCat && matchDate;
+            });
+
+            const list = document.getElementById('txList');
+            list.innerHTML = '';
+            let inc = 0, exp = 0;
+
+            filtered.forEach(t => {
+                if (t.type === 'gelir') inc += t.amount;
+                else exp += t.amount;
+
+                const color = t.type === 'gelir' ? 'var(--green)' : 'var(--red)';
+                const sign = t.type === 'gelir' ? '+' : '-';
+
+                list.innerHTML += `
+                    <div class="tx-item">
+                        <div>
+                            <div style="font-weight:bold;">${t.desc}</div>
+                            <div style="font-size:12px; color:var(--muted);">${t.cat} • ${t.date}</div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <div style="font-weight:bold; color:${color}">${sign}₺${t.amount.toFixed(2)}</div>
+                            <div class="tx-actions">
+                                <button class="btn-sm" onclick="cloneTx(${t.id})">📋</button>
+                                <button class="btn-sm" onclick="deleteTx(${t.id})">🗑️</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('totalIncome').innerText = `+₺${inc.toFixed(2)}`;
+            document.getElementById('totalExpense').innerText = `-₺${exp.toFixed(2)}`;
+            const bal = inc - exp;
+            const balEl = document.getElementById('netBalance');
+            balEl.innerText = `${bal < 0 ? '-' : ''}₺${Math.abs(bal).toFixed(2)}`;
+            balEl.style.color = bal >= 0 ? 'var(--text)' : 'var(--red)';
+        }
+
+        /* BORÇ VE TASARRUF İŞLEMLERİ */
+        function saveDebt(e) {
+            e.preventDefault();
+            const debt = {
+                id: Date.now(),
+                title: document.getElementById('debtTitle').value,
+                unit: document.getElementById('debtUnit').value,
+                amount: parseFloat(document.getElementById('debtAmount').value),
+                dueDate: document.getElementById('debtDueDate').value || 'Belirsiz'
+            };
+            state.debts.push(debt);
+            save();
+            renderDebts();
+            closeModals();
+        }
+
+        function payDebt(id) {
+            const debt = state.debts.find(d => d.id === id);
+            if (!debt) return;
+
+            const payAmt = prompt(`Kalan: ${debt.amount} ${debt.unit}. Ne kadar ödemek istiyorsunuz?`);
+            if (payAmt && !isNaN(payAmt)) {
+                const val = parseFloat(payAmt);
+                debt.amount -= val;
+
+                // TL Karşılığı Hesapla & Gider Olarak Ekle
+                let tlValue = val;
+                if (debt.unit === 'GRAM') tlValue = val * rates.goldGram;
+                else if (debt.unit === 'CEYREK') tlValue = val * (rates.goldGram * 1.63);
+                else if (debt.unit === 'USD') tlValue = val * rates.usd;
+
+                state.txs.unshift({
+                    id: Date.now(),
+                    type: 'gider',
+                    amount: tlValue,
+                    cat: 'Diğer',
+                    date: new Date().toISOString().split('T')[0],
+                    desc: `[Borç Ödeme] ${debt.title} (${val} ${debt.unit})`
+                });
+
+                if (debt.amount <= 0) {
+                    state.debts = state.debts.filter(d => d.id !== id);
+                }
+
+                save();
+                renderDebts();
+                render();
+            }
+        }
+
+        function renderDebts() {
+            const list = document.getElementById('debtList');
+            if (!list) return;
+            list.innerHTML = '';
+
+            if (state.debts.length === 0) {
+                list.innerHTML = '<div style="color:var(--muted); font-size:13px;">Kayıtlı borç bulunmuyor.</div>';
+                return;
+            }
+
+            state.debts.forEach(d => {
+                let approxTL = d.amount;
+                if (d.unit === 'GRAM') approxTL = d.amount * rates.goldGram;
+                else if (d.unit === 'CEYREK') approxTL = d.amount * (rates.goldGram * 1.63);
+                else if (d.unit === 'USD') approxTL = d.amount * rates.usd;
+
+                list.innerHTML += `
+                    <div class="tx-item">
+                        <div>
+                            <div style="font-weight:bold;">${d.title} <span class="badge badge-debt">${d.unit}</span></div>
+                            <div style="font-size:11px; color:var(--muted);">Vade: ${d.dueDate} • ~₺${approxTL.toFixed(0)}</div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <div style="font-weight:bold; color:var(--red);">${d.amount} ${d.unit}</div>
+                            <button class="btn-sm-inline" onclick="payDebt(${d.id})">Öde</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function saveGoal(e) {
+            e.preventDefault();
+            const goal = {
+                id: Date.now(),
+                title: document.getElementById('goalTitle').value,
+                target: parseFloat(document.getElementById('goalTarget').value),
+                current: 0
+            };
+            state.goals.push(goal);
+            save();
+            renderGoals();
+            closeModals();
+        }
+
+        function addMoneyToGoal(id) {
+            const goal = state.goals.find(g => g.id === id);
+            if (!goal) return;
+
+            const amt = prompt(`[${goal.title}] için ne kadar biriktirdiniz? (₺):`);
+            if (amt && !isNaN(amt)) {
+                const val = parseFloat(amt);
+                goal.current += val;
+
+                state.txs.unshift({
+                    id: Date.now(),
+                    type: 'gider',
+                    amount: val,
+                    cat: 'Diğer',
+                    date: new Date().toISOString().split('T')[0],
+                    desc: `[Tasarruf] ${goal.title}`
+                });
+
+                save();
+                renderGoals();
+                render();
+            }
+        }
+
+        function renderGoals() {
+            const list = document.getElementById('goalList');
+            if (!list) return;
+            list.innerHTML = '';
+
+            if (state.goals.length === 0) {
+                list.innerHTML = '<div style="color:var(--muted); font-size:13px;">Henüz tasarruf hedefiniz yok.</div>';
+                return;
+            }
+
+            state.goals.forEach(g => {
+                const pct = Math.min(Math.round((g.current / g.target) * 100), 100);
+                list.innerHTML += `
+                    <div class="card" style="margin-bottom:8px; padding:12px;">
+                        <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:bold;">
+                            <span>${g.title}</span>
+                            <span>₺${g.current.toFixed(0)} / ₺${g.target.toFixed(0)} (%${pct})</span>
+                        </div>
+                        <div class="progress-track"><div class="progress-fill" style="width:${pct}%; background:var(--green);"></div></div>
+                        <button class="btn-sm-inline" style="margin-top:8px; width:100%;" onclick="addMoneyToGoal(${g.id})">+ Para Ekle</button>
+                    </div>
+                `;
+            });
+        }
+
+        function saveRec(e) {
+            e.preventDefault();
+            const rec = {
+                id: Date.now(),
+                type: document.getElementById('recType').value,
+                amount: parseFloat(document.getElementById('recAmount').value),
+                cat: document.getElementById('recCat').value,
+                day: document.getElementById('recDay').value,
+                desc: document.getElementById('recDesc').value
+            };
+            state.recs.push(rec);
+            save();
+            renderRecs();
+            closeModals();
+        }
+
+        function deleteRec(id) {
+            state.recs = state.recs.filter(r => r.id !== id);
+            save();
+            renderRecs();
+        }
+
+        function renderRecs() {
+            const list = document.getElementById('recList');
+            list.innerHTML = '';
+            state.recs.forEach(r => {
+                list.innerHTML += `
+                    <div class="tx-item">
+                        <div>
+                            <div style="font-weight:bold;">${r.desc}</div>
+                            <div style="font-size:12px; color:var(--muted);">${r.cat} • Her ayın ${r.day}. günü</div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <div style="font-weight:bold;">₺${r.amount.toFixed(2)}</div>
+                            <button class="btn-sm" onclick="deleteRec(${r.id})">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function renderAnalysis() {
+            let totalInc = 0, totalExp = 0;
+            const catTotals = {};
+
+            state.txs.forEach(t => {
+                if (t.type === 'gelir') totalInc += t.amount;
+                else {
+                    totalExp += t.amount;
+                    catTotals[t.cat] = (catTotals[t.cat] || 0) + t.amount;
+                }
+            });
+
+            document.getElementById('analysisInc').innerText = `₺${totalInc.toFixed(0)}`;
+            document.getElementById('analysisExp').innerText = `₺${totalExp.toFixed(0)}`;
+
+            const grand = totalInc + totalExp;
+            document.getElementById('incBar').style.width = grand > 0 ? `${(totalInc/grand)*100}%` : '50%';
+            document.getElementById('expBar').style.width = grand > 0 ? `${(totalExp/grand)*100}%` : '50%';
+
+            const list = document.getElementById('chartList');
+            list.innerHTML = '';
+            if (totalExp === 0) { list.innerHTML = '<div style="color:var(--muted);">Gider verisi bulunamadı.</div>'; return; }
+
+            Object.keys(catTotals).sort((a,b) => catTotals[b] - catTotals[a]).forEach(c => {
+                const amt = catTotals[c];
+                const pct = ((amt / totalExp) * 100).toFixed(1);
+                list.innerHTML += `
+                    <div style="margin-bottom: 10px;">
+                        <div style="display:flex; justify-content:space-between; font-size:13px;">
+                            <span>${c}</span>
+                            <span>₺${amt.toFixed(2)} (%${pct})</span>
+                        </div>
+                        <div class="progress-track"><div class="progress-fill" style="width:${pct}%; background:var(--blue);"></div></div>
+                    </div>
+                `;
+            });
+        }
+
+        function renderCats() {
+            const list = document.getElementById('catList');
+            list.innerHTML = '';
+            state.cats.forEach((c, idx) => {
+                list.innerHTML += `
+                    <div class="tx-item">
+                        <span>${c}</span>
+                        <div>
+                            <button class="btn-sm" onclick="renameCat(${idx})">✏️</button>
+                            <button class="btn-sm" onclick="deleteCat(${idx})">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function addCategory() {
+            const name = prompt('Kategori Adı:');
+            if (name && !state.cats.includes(name)) {
+                state.cats.push(name);
+                save();
+                updateCatDropdowns();
+                renderCats();
+            }
+        }
+
+        function renameCat(idx) {
+            const oldName = state.cats[idx];
+            const newName = prompt('Yeni Ad:', oldName);
+            if (newName && newName !== oldName) {
+                state.cats[idx] = newName;
+                state.txs.forEach(t => { if(t.cat === oldName) t.cat = newName; });
+                save();
+                updateCatDropdowns();
+                render();
+                renderCats();
+            }
+        }
+
+        function deleteCat(idx) {
+            state.cats.splice(idx, 1);
+            save();
+            updateCatDropdowns();
+            renderCats();
+        }
+
+        function exportCSV() {
+            let csv = "\uFEFFTarih,Tür,Kategori,Tutar,Açıklama\n";
+            state.txs.forEach(t => csv += `"${t.date}","${t.type}","${t.cat}","${t.amount}","${t.desc}"\n`);
+            const blob = new Blob([csv], { type: 'text/csv;' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'butce.csv';
+            a.click();
+        }
+
+        function resetData() {
+            if (confirm('Tüm veriler silinecek!')) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
