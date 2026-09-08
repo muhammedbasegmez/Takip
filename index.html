@@ -76,13 +76,15 @@
             </div>
         </div>
 
-        <!-- SEKMELER (Tab Navigation) -->
-        <div class="flex p-1 bg-slate-900/80 rounded-xl border border-slate-800 text-[11px] font-medium overflow-x-auto">
-            <button onclick="switchTab('add')" id="tab-add" class="flex-1 py-2 px-2 rounded-lg transition-all text-center font-semibold bg-indigo-600 text-white whitespace-nowrap">Ekle</button>
-            <button onclick="switchTab('list')" id="tab-list" class="flex-1 py-2 px-2 rounded-lg transition-all text-center font-semibold text-slate-400 hover:text-white whitespace-nowrap">İşlemler</button>
-            <button onclick="switchTab('debts')" id="tab-debts" class="flex-1 py-2 px-2 rounded-lg transition-all text-center font-semibold text-slate-400 hover:text-white whitespace-nowrap">Borç / Altın</button>
-            <button onclick="switchTab('savings')" id="tab-savings" class="flex-1 py-2 px-2 rounded-lg transition-all text-center font-semibold text-slate-400 hover:text-white whitespace-nowrap">Tasarruf</button>
-            <button onclick="switchTab('report')" id="tab-report" class="flex-1 py-2 px-2 rounded-lg transition-all text-center font-semibold text-slate-400 hover:text-white whitespace-nowrap">Rapor</button>
+        <!-- SEKMELER (Tab Navigation - Kategori/Ayar sekmesi dahil) -->
+        <div class="flex p-1 bg-slate-900/80 rounded-xl border border-slate-800 text-[11px] font-medium overflow-x-auto gap-1">
+            <button onclick="switchTab('add')" id="tab-add" class="flex-1 py-2 px-2.5 rounded-lg transition-all text-center font-semibold bg-indigo-600 text-white whitespace-nowrap">Ekle</button>
+            <button onclick="switchTab('list')" id="tab-list" class="flex-1 py-2 px-2.5 rounded-lg transition-all text-center font-semibold text-slate-400 hover:text-white whitespace-nowrap">İşlemler</button>
+            <button onclick="switchTab('recurring')" id="tab-recurring" class="flex-1 py-2 px-2.5 rounded-lg transition-all text-center font-semibold text-slate-400 hover:text-white whitespace-nowrap">Sabit</button>
+            <button onclick="switchTab('debts')" id="tab-debts" class="flex-1 py-2 px-2.5 rounded-lg transition-all text-center font-semibold text-slate-400 hover:text-white whitespace-nowrap">Borç</button>
+            <button onclick="switchTab('savings')" id="tab-savings" class="flex-1 py-2 px-2.5 rounded-lg transition-all text-center font-semibold text-slate-400 hover:text-white whitespace-nowrap">Tasarruf</button>
+            <button onclick="switchTab('report')" id="tab-report" class="flex-1 py-2 px-2.5 rounded-lg transition-all text-center font-semibold text-slate-400 hover:text-white whitespace-nowrap">Rapor</button>
+            <button onclick="switchTab('categories')" id="tab-categories" class="flex-1 py-2 px-2.5 rounded-lg transition-all text-center font-semibold text-slate-400 hover:text-white whitespace-nowrap">Ayar</button>
         </div>
 
         <!-- TAB 1: HIZLI İŞLEM EKLE -->
@@ -102,7 +104,7 @@
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="text-[11px] font-semibold text-slate-400 mb-1 block">TUTAR (₺)</label>
-                        <input type="number" id="txAmount" step="0.01" placeholder="0.00" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-base font-bold text-white focus:outline-none focus:border-indigo-500">
+                        <input type="number" id="txAmount" inputmode="decimal" step="0.01" placeholder="0.00" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-base font-bold text-white focus:outline-none focus:border-indigo-500">
                     </div>
                     <div>
                         <label class="text-[11px] font-semibold text-slate-400 mb-1 block">TARİH</label>
@@ -144,10 +146,28 @@
             <div id="txList" class="space-y-2"></div>
         </section>
 
-        <!-- TAB 3: BORÇ & ALTIN TAKİBİ -->
+        <!-- TAB 3: SABİT GELİR / GİDERLER (FATURALAR VB.) -->
+        <section id="sec-recurring" class="space-y-4 hidden">
+            <form onsubmit="handleRecurringSubmit(event)" class="glass p-4 rounded-2xl space-y-3">
+                <h3 class="text-xs font-bold text-indigo-400 uppercase tracking-wider">Yeni Sabit Gelir / Gider</h3>
+                <input type="text" id="recTitle" placeholder="Örn: Elektrik Faturası, Kira, İnternet" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                <div class="grid grid-cols-2 gap-2">
+                    <select id="recType" class="bg-slate-950 border border-slate-800 rounded-xl px-2 py-2 text-xs text-slate-200">
+                        <option value="gider">Gider</option>
+                        <option value="gelir">Gelir</option>
+                    </select>
+                    <input type="number" id="recAmount" inputmode="decimal" step="0.01" placeholder="Varsayılan Tutar (₺)" required class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                </div>
+                <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-xs transition">SABİT KALEM EKLE</button>
+            </form>
+
+            <div id="recurringList" class="space-y-2"></div>
+        </section>
+
+        <!-- TAB 4: BORÇ TAKİBİ -->
         <section id="sec-debts" class="space-y-4 hidden">
             <form onsubmit="handleDebtSubmit(event)" class="glass p-4 rounded-2xl space-y-3">
-                <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider">Yeni Borç / Alacak Kaydı</h3>
+                <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider">Yeni Borç Kaydı</h3>
                 
                 <div class="grid grid-cols-2 gap-2">
                     <input type="text" id="debtPerson" placeholder="Kişi / Kurum Adı" required class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
@@ -158,7 +178,7 @@
                 </div>
 
                 <div class="grid grid-cols-2 gap-2">
-                    <input type="number" id="debtAmount" step="0.01" placeholder="Miktar / Tutar" required class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                    <input type="number" id="debtAmount" inputmode="decimal" step="0.01" placeholder="Miktar / Tutar" required class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
                     <select id="debtUnit" class="bg-slate-950 border border-slate-800 rounded-xl px-2 py-2 text-xs text-amber-300 font-semibold">
                         <option value="TL">TL (₺)</option>
                         <option value="Gram Altın">Gram Altın</option>
@@ -182,14 +202,14 @@
             <div id="debtList" class="space-y-2"></div>
         </section>
 
-        <!-- TAB 4: TASARRUF VE BİRİKİM HEDEFLERİ -->
+        <!-- TAB 5: TASARRUF VE BİRİKİM HEDEFLERİ -->
         <section id="sec-savings" class="space-y-4 hidden">
             <form onsubmit="handleSavingSubmit(event)" class="glass p-4 rounded-2xl space-y-3">
                 <h3 class="text-xs font-bold text-emerald-400 uppercase tracking-wider">Yeni Tasarruf Hedefi</h3>
                 <input type="text" id="savingTitle" placeholder="Hedef Adı (Örn: Tatil, Araba)" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
                 <div class="grid grid-cols-2 gap-2">
-                    <input type="number" id="savingTarget" step="0.01" placeholder="Hedef Tutar (₺)" required class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
-                    <input type="number" id="savingCurrent" step="0.01" placeholder="Mevcut Birikim (₺)" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                    <input type="number" id="savingTarget" inputmode="decimal" step="0.01" placeholder="Hedef Tutar (₺)" required class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                    <input type="number" id="savingCurrent" inputmode="decimal" step="0.01" placeholder="Mevcut Birikim (₺)" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
                 </div>
                 <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs transition">HEDEF EKLE</button>
             </form>
@@ -197,7 +217,7 @@
             <div id="savingsList" class="space-y-2"></div>
         </section>
 
-        <!-- TAB 5: RAPORLAMA -->
+        <!-- TAB 6: RAPORLAMA -->
         <section id="sec-report" class="space-y-4 hidden">
             <div class="glass p-4 rounded-2xl text-center space-y-3">
                 <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Kategori Bazlı Gider Dağılımı</h3>
@@ -208,22 +228,37 @@
             </div>
         </section>
 
+        <!-- TAB 7: KATEGORİ YÖNETİMİ / AYARLAR -->
+        <section id="sec-categories" class="space-y-4 hidden">
+            <div class="glass p-4 rounded-2xl space-y-3">
+                <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Yeni Kategori Ekle</h3>
+                <div class="flex gap-2">
+                    <input type="text" id="newCatName" placeholder="Kategori Adı" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                    <button onclick="addCategory()" class="bg-indigo-600 px-4 py-2 rounded-xl text-xs font-bold text-white shadow transition">Ekle</button>
+                </div>
+            </div>
+
+            <div class="glass p-4 rounded-2xl space-y-2">
+                <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Mevcut Kategoriler</h3>
+                <div id="categoryManagerList" class="space-y-2"></div>
+            </div>
+        </section>
+
     </main>
 
     <!-- JavaScript -->
     <script>
-        // Service Worker Kaydı (PWA & Offline Çalışma)
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js').catch(err => console.log('SW register failed:', err));
+                navigator.serviceWorker.register('sw.js').catch(err => console.log('SW failed:', err));
             });
         }
 
-        // State
         let transactions = JSON.parse(localStorage.getItem('my_tx_data')) || [];
         let categories = JSON.parse(localStorage.getItem('my_cat_data')) || ['Mutfak', 'Kira', 'Fatura', 'Eğlence', 'Maaş', 'Ulaşım', 'Diğer'];
         let debts = JSON.parse(localStorage.getItem('my_debt_data')) || [];
         let savings = JSON.parse(localStorage.getItem('my_saving_data')) || [];
+        let recurrings = JSON.parse(localStorage.getItem('my_rec_data')) || [];
         
         let currentType = 'gider';
         let chartInstance = null;
@@ -235,20 +270,26 @@
         });
 
         function switchTab(tab) {
-            ['add', 'list', 'debts', 'savings', 'report'].forEach(t => {
-                document.getElementById(`sec-${t}`).classList.add('hidden');
+            ['add', 'list', 'recurring', 'debts', 'savings', 'report', 'categories'].forEach(t => {
+                const el = document.getElementById(`sec-${t}`);
+                if(el) el.classList.add('hidden');
+                
                 const btn = document.getElementById(`tab-${t}`);
-                btn.className = "flex-1 py-2 px-2 rounded-lg transition-all text-center font-semibold text-slate-400 hover:text-white whitespace-nowrap";
+                if(btn) btn.className = "flex-1 py-2 px-2.5 rounded-lg transition-all text-center font-semibold text-slate-400 hover:text-white whitespace-nowrap";
             });
 
-            document.getElementById(`sec-${tab}`).classList.remove('hidden');
+            const activeSec = document.getElementById(`sec-${tab}`);
+            if(activeSec) activeSec.classList.remove('hidden');
+
             const activeBtn = document.getElementById(`tab-${tab}`);
-            activeBtn.className = "flex-1 py-2 px-2 rounded-lg transition-all text-center font-semibold bg-indigo-600 text-white shadow-sm whitespace-nowrap";
+            if(activeBtn) activeBtn.className = "flex-1 py-2 px-2.5 rounded-lg transition-all text-center font-semibold bg-indigo-600 text-white shadow-sm whitespace-nowrap";
 
             if(tab === 'list') renderList();
+            if(tab === 'recurring') renderRecurrings();
             if(tab === 'debts') renderDebts();
             if(tab === 'savings') renderSavings();
             if(tab === 'report') renderChart();
+            if(tab === 'categories') renderCategoryManager();
         }
 
         function setType(type) {
@@ -390,6 +431,81 @@
             }
         }
 
+        // --- SABİT GELİR / GİDER MANTIĞI ---
+        function handleRecurringSubmit(e) {
+            e.preventDefault();
+            const title = document.getElementById('recTitle').value.trim();
+            const type = document.getElementById('recType').value;
+            const amount = parseFloat(document.getElementById('recAmount').value);
+
+            if(!title || isNaN(amount)) return;
+
+            recurrings.push({ id: Date.now().toString(), title, type, amount });
+            saveRecurrings();
+            renderRecurrings();
+
+            document.getElementById('recTitle').value = '';
+            document.getElementById('recAmount').value = '';
+        }
+
+        function renderRecurrings() {
+            const container = document.getElementById('recurringList');
+            if(recurrings.length === 0) {
+                container.innerHTML = `<div class="text-center py-6 text-xs text-slate-500">Kayıtlı sabit gelir/gider yok.</div>`;
+                return;
+            }
+
+            container.innerHTML = recurrings.map(r => `
+                <div class="glass-card p-3.5 rounded-xl flex items-center justify-between">
+                    <div>
+                        <div class="text-xs font-bold text-slate-200">${r.title}</div>
+                        <div class="text-[10px] text-slate-400">Varsayılan: ₺${r.amount.toFixed(2)} (${r.type.toUpperCase()})</div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="applyRecurring('${r.id}')" class="text-[11px] bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-2.5 py-1 rounded-lg shadow transition">
+                            + Bu Ay İşle
+                        </button>
+                        <button onclick="deleteRecurring('${r.id}')" class="text-slate-500 hover:text-rose-400 text-xs p-1">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function applyRecurring(id) {
+            const r = recurrings.find(item => item.id === id);
+            if(!r) return;
+
+            const inputVal = prompt(`"${r.title}" için bu ayki tutarı onaylayın veya değiştirin (₺):`, r.amount);
+            if(inputVal !== null && !isNaN(inputVal) && parseFloat(inputVal) > 0) {
+                const finalAmount = parseFloat(inputVal);
+                const today = new Date().toISOString().slice(0, 10);
+
+                transactions.push({
+                    id: Date.now().toString(),
+                    type: r.type,
+                    amount: finalAmount,
+                    date: today,
+                    category: r.type === 'gider' ? 'Fatura' : 'Maaş',
+                    desc: `${r.title} (Sabit)`
+                });
+
+                saveData();
+                updateDashboard();
+                alert(`"${r.title}" işlemi ₺${finalAmount.toFixed(2)} olarak eklendi!`);
+            }
+        }
+
+        function deleteRecurring(id) {
+            if(confirm('Sabit kalemi silmek istediğinize emin misiniz?')) {
+                recurrings = recurrings.filter(r => r.id !== id);
+                saveRecurrings();
+                renderRecurrings();
+            }
+        }
+
+        // --- BORÇ TAKİBİ ---
         function handleDebtSubmit(e) {
             e.preventDefault();
             const person = document.getElementById('debtPerson').value.trim();
@@ -467,6 +583,7 @@
             }
         }
 
+        // --- TASARRUF YÖNETİMİ ---
         function handleSavingSubmit(e) {
             e.preventDefault();
             const title = document.getElementById('savingTitle').value.trim();
@@ -531,6 +648,42 @@
             }
         }
 
+        // --- KATEGORİ YÖNETİMİ ---
+        function renderCategoryManager() {
+            const list = document.getElementById('categoryManagerList');
+            if(categories.length === 0) {
+                list.innerHTML = `<div class="text-center text-xs text-slate-500 py-2">Kategori bulunamadı.</div>`;
+                return;
+            }
+
+            list.innerHTML = categories.map(cat => `
+                <div class="flex items-center justify-between bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-xs">
+                    <span class="text-slate-200 font-medium">${cat}</span>
+                    <button onclick="removeCategory('${cat}')" class="text-rose-400 hover:text-rose-300 p-1"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            `).join('');
+        }
+
+        function addCategory() {
+            const val = document.getElementById('newCatName').value.trim();
+            if(val && !categories.includes(val)) {
+                categories.push(val);
+                saveCategories();
+                document.getElementById('newCatName').value = '';
+                renderCategoryManager();
+                renderCategoriesGrid();
+            }
+        }
+
+        function removeCategory(cat) {
+            if(confirm(`"${cat}" kategorisini silmek istediğinize emin misiniz?`)) {
+                categories = categories.filter(c => c !== cat);
+                saveCategories();
+                renderCategoryManager();
+                renderCategoriesGrid();
+            }
+        }
+
         function updateDashboard() {
             let inc = 0, exp = 0;
             transactions.forEach(t => {
@@ -582,12 +735,14 @@
         }
 
         function saveData() { localStorage.setItem('my_tx_data', JSON.stringify(transactions)); }
+        function saveCategories() { localStorage.setItem('my_cat_data', JSON.stringify(categories)); }
         function saveDebts() { localStorage.setItem('my_debt_data', JSON.stringify(debts)); }
         function saveSavings() { localStorage.setItem('my_saving_data', JSON.stringify(savings)); }
+        function saveRecurrings() { localStorage.setItem('my_rec_data', JSON.stringify(recurrings)); }
         function formatDate(d) { const parts = d.split('-'); return `${parts[2]}.${parts[1]}.${parts[0]}`; }
 
         function exportData() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ transactions, categories, debts, savings }));
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ transactions, categories, debts, savings, recurrings }));
             const dlAnchorElem = document.createElement('a');
             dlAnchorElem.setAttribute("href", dataStr);
             dlAnchorElem.setAttribute("download", `cuzdan_yedek_${new Date().toISOString().slice(0,10)}.json`);
