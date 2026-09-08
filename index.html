@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="tr" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <title>Cüzdanım - Gelir Gider & Borç Takibi</title>
+    
+    <!-- PWA & iOS Safari Ayarları -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Cüzdanım">
+    <meta name="theme-color" content="#020617">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2933/2933116.png">
+
+    <!-- Tailwind CSS & Chart.js -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome Iconlar -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body {
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+            -webkit-tap-highlight-color: transparent;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        .pb-safe { padding-bottom: calc(env(safe-area-inset-bottom) + 5rem); }
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-card {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        ::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-full flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
+
+    <!-- Üst Başlık / Header -->
+    <header class="sticky top-0 z-30 glass px-5 py-4 flex items-center justify-between border-b border-slate-800/50">
+        <div class="flex items-center space-x-3">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+                <i class="fa-solid font-bold fa-wallet"></i>
+            </div>
+            <h1 class="text-lg font-bold bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">Cüzdanım</h1>
+        </div>
+        <button onclick="exportData()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700 transition">
+            <i class="fa-solid fa-download mr-1"></i> Yedekle
+        </button>
+    </header>
+
+    <!-- Ana İçerik -->
+    <main class="flex-1 px-4 pt-4 pb-safe space-y-4 max-w-md mx-auto w-full">
+
+        <!-- Özet Kartları -->
+        <div class="grid grid-cols-2 gap-3">
+            <div class="glass-card p-4 rounded-2xl col-span-2 relative overflow-hidden">
+                <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-indigo-500/10 rounded-full blur-xl"></div>
+                <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Net Bakiye (TL)</span>
+                <div id="totalBalance" class="text-2xl font-extrabold mt-1 text-white">₺0.00</div>
+            </div>
+            <div class="glass-card p-3 rounded-2xl border-l-4 border-l-emerald-500">
+                <span class="text-[10px] font-medium text-slate-400 block">Top. Gelir</span>
+                <span id="totalIncome" class="text-sm font-bold text-emerald-400 mt-0.5 block">₺0.00</span>
+            </div>
+            <div class="glass-card p-3 rounded-2xl border-l-4 border-l-rose-500">
+                <span class="text-[10px] font-medium text-slate-400 block">Top. Gider</span>
+                <span id="totalExpense" class="text-sm font-bold text-rose-400 mt-0.5 block">₺0.00</span>
+            </div>
+        </div>
+
+        <!-- SEKMELER (Tab Navigation) -->
+        <div class="flex p-1 bg-slate-900/80 rounded-xl border border-slate-800 text-[11px] font-medium overflow-x-auto">
+            <button onclick="switchTab('add')" id="tab-add" class="flex-1 py-2 px-2 rounded-lg transition-all text-center font-semibold bg-indigo-600 text-white whitespace-nowrap">Ekle</button>
+            <button onclick="switchTab('list')" id="tab-list" class="flex-1 py-2 px-2 rounded-lg transition-all text-center font-semibold text-slate-400 hover:text-white whitespace-nowrap">İşlemler</button>
+            <button onclick="switchTab('debts')" id="tab-debts" class="flex-1 py-2 px-2 rounded-lg transition-all text-center font-semibold text-slate-400 hover:text-white whitespace-nowrap">Borç / Altın</button>
+            <button onclick="switchTab('savings')" id="tab-savings" class="flex-1 py-2 px-2 rounded-lg transition-all text-center font-semibold text-slate-400 hover:text-white whitespace-nowrap">Tasarruf</button>
+            <button onclick="switchTab('report')" id="tab-report" class="flex-1 py-2 px-2 rounded-lg transition-all text-center font-semibold text-slate-400 hover:text-white whitespace-nowrap">Rapor</button>
+        </div>
+
+        <!-- TAB 1: HIZLI İŞLEM EKLE -->
+        <section id="sec-add" class="space-y-4">
+            <form id="txForm" onsubmit="handleTxSubmit(event)" class="glass p-4 rounded-2xl space-y-4">
+                <input type="hidden" id="txId">
+                
+                <div class="grid grid-cols-2 gap-2 p-1 bg-slate-950 rounded-xl border border-slate-800">
+                    <button type="button" onclick="setType('gider')" id="btnTypeExpense" class="py-2.5 rounded-lg text-xs font-bold transition bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                        <i class="fa-solid fa-arrow-down mr-1"></i> GİDER
+                    </button>
+                    <button type="button" onclick="setType('gelir')" id="btnTypeIncome" class="py-2.5 rounded-lg text-xs font-bold transition text-slate-400">
+                        <i class="fa-solid fa-arrow-up mr-1"></i> GELİR
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[11px] font-semibold text-slate-400 mb-1 block">TUTAR (₺)</label>
+                        <input type="number" id="txAmount" step="0.01" placeholder="0.00" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-base font-bold text-white focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="text-[11px] font-semibold text-slate-400 mb-1 block">TARİH</label>
+                        <input type="date" id="txDate" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-[11px] font-semibold text-slate-400 mb-1.5 block">KATEGORİ SEÇİN</label>
+                    <div id="categoryGrid" class="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto pr-1"></div>
+                    <input type="hidden" id="selectedCategory" required>
+                </div>
+
+                <div>
+                    <label class="text-[11px] font-semibold text-slate-400 mb-1 block">AÇIKLAMA (OPSİYONEL)</label>
+                    <input type="text" id="txDesc" placeholder="Örn: Market alışverişi" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500">
+                </div>
+
+                <div class="flex space-x-2 pt-1">
+                    <button type="button" id="btnCancelEdit" onclick="resetForm()" class="hidden flex-1 py-3 bg-slate-800 text-slate-300 rounded-xl font-bold text-xs">İptal</button>
+                    <button type="submit" id="btnSave" class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-xs shadow-lg shadow-indigo-600/30 transition">KAYDET</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- TAB 2: İŞLEMLER VE FİLTRELEME -->
+        <section id="sec-list" class="space-y-4 hidden">
+            <div class="glass p-3 rounded-2xl space-y-2">
+                <span class="text-[11px] font-bold text-indigo-400 uppercase tracking-wider block">Tarih Aralığı Filtrele</span>
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="date" id="filterStart" onchange="renderList()" class="bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200">
+                    <input type="date" id="filterEnd" onchange="renderList()" class="bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200">
+                </div>
+                <div class="flex justify-between items-center pt-2 border-t border-slate-800 text-xs px-1">
+                    <span class="text-slate-400">Aralık Net: <strong id="filterNet" class="text-white">₺0.00</strong></span>
+                    <button onclick="clearFilter()" class="text-indigo-400 text-[11px] underline">Temizle</button>
+                </div>
+            </div>
+            <div id="txList" class="space-y-2"></div>
+        </section>
+
+        <!-- TAB 3: BORÇ & ALTIN TAKİBİ -->
+        <section id="sec-debts" class="space-y-4 hidden">
+            <form onsubmit="handleDebtSubmit(event)" class="glass p-4 rounded-2xl space-y-3">
+                <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider">Yeni Borç / Alacak Kaydı</h3>
+                
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="text" id="debtPerson" placeholder="Kişi / Kurum Adı" required class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                    <select id="debtType" class="bg-slate-950 border border-slate-800 rounded-xl px-2 py-2 text-xs text-slate-200">
+                        <option value="alacak">Alacaklıyım (Verdim)</option>
+                        <option value="borc">Borçluyum (Aldım)</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="number" id="debtAmount" step="0.01" placeholder="Miktar / Tutar" required class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                    <select id="debtUnit" class="bg-slate-950 border border-slate-800 rounded-xl px-2 py-2 text-xs text-amber-300 font-semibold">
+                        <option value="TL">TL (₺)</option>
+                        <option value="Gram Altın">Gram Altın</option>
+                        <option value="Çeyrek Altın">Çeyrek Altın</option>
+                        <option value="Tam Altın">Tam Altın</option>
+                        <option value="USD">Dolar ($)</option>
+                        <option value="EUR">Euro (€)</option>
+                    </select>
+                </div>
+
+                <input type="text" id="debtNote" placeholder="Not (Opsiyonel)" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+
+                <button type="submit" class="w-full py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-bold text-xs transition">BORÇ KAYDI EKLE</button>
+            </form>
+
+            <div class="glass-card p-3 rounded-2xl space-y-1">
+                <span class="text-[10px] font-bold text-amber-400 uppercase tracking-wider block">Altın Bakiyesi Özeti</span>
+                <div id="goldSummaryList" class="text-xs space-y-1 text-slate-300"></div>
+            </div>
+
+            <div id="debtList" class="space-y-2"></div>
+        </section>
+
+        <!-- TAB 4: TASARRUF VE BİRİKİM HEDEFLERİ -->
+        <section id="sec-savings" class="space-y-4 hidden">
+            <form onsubmit="handleSavingSubmit(event)" class="glass p-4 rounded-2xl space-y-3">
+                <h3 class="text-xs font-bold text-emerald-400 uppercase tracking-wider">Yeni Tasarruf Hedefi</h3>
+                <input type="text" id="savingTitle" placeholder="Hedef Adı (Örn: Tatil, Araba)" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="number" id="savingTarget" step="0.01" placeholder="Hedef Tutar (₺)" required class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                    <input type="number" id="savingCurrent" step="0.01" placeholder="Mevcut Birikim (₺)" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                </div>
+                <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs transition">HEDEF EKLE</button>
+            </form>
+
+            <div id="savingsList" class="space-y-2"></div>
+        </section>
+
+        <!-- TAB 5: RAPORLAMA -->
+        <section id="sec-report" class="space-y-4 hidden">
+            <div class="glass p-4 rounded-2xl text-center space-y-3">
+                <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Kategori Bazlı Gider Dağılımı</h3>
+                <div class="relative w-full aspect-square max-w-[220px] mx-auto">
+                    <canvas id="expenseChart"></canvas>
+                </div>
+                <div id="chartLegend" class="space-y-1.5 text-xs text-left pt-2 border-t border-slate-800"></div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- JavaScript -->
+    <script>
+        // Service Worker Kaydı (PWA & Offline Çalışma)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').catch(err => console.log('SW register failed:', err));
+            });
+        }
+
+        // State
+        let transactions = JSON.parse(localStorage.getItem('my_tx_data')) || [];
+        let categories = JSON.parse(localStorage.getItem('my_cat_data')) || ['Mutfak', 'Kira', 'Fatura', 'Eğlence', 'Maaş', 'Ulaşım', 'Diğer'];
+        let debts = JSON.parse(localStorage.getItem('my_debt_data')) || [];
+        let savings = JSON.parse(localStorage.getItem('my_saving_data')) || [];
+        
+        let currentType = 'gider';
+        let chartInstance = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('txDate').valueAsDate = new Date();
+            renderCategoriesGrid();
+            updateDashboard();
+        });
+
+        function switchTab(tab) {
+            ['add', 'list', 'debts', 'savings', 'report'].forEach(t => {
+                document.getElementById(`sec-${t}`).classList.add('hidden');
+                const btn = document.getElementById(`tab-${t}`);
+                btn.className = "flex-1 py-2 px-2 rounded-lg transition-all text-center font-semibold text-slate-400 hover:text-white whitespace-nowrap";
+            });
+
+            document.getElementById(`sec-${tab}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`tab-${tab}`);
+            activeBtn.className = "flex-1 py-2 px-2 rounded-lg transition-all text-center font-semibold bg-indigo-600 text-white shadow-sm whitespace-nowrap";
+
+            if(tab === 'list') renderList();
+            if(tab === 'debts') renderDebts();
+            if(tab === 'savings') renderSavings();
+            if(tab === 'report') renderChart();
+        }
+
+        function setType(type) {
+            currentType = type;
+            const btnExp = document.getElementById('btnTypeExpense');
+            const btnInc = document.getElementById('btnTypeIncome');
+            if(type === 'gider') {
+                btnExp.className = "py-2.5 rounded-lg text-xs font-bold transition bg-rose-500/20 text-rose-400 border border-rose-500/30";
+                btnInc.className = "py-2.5 rounded-lg text-xs font-bold transition text-slate-400";
+            } else {
+                btnInc.className = "py-2.5 rounded-lg text-xs font-bold transition bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+                btnExp.className = "py-2.5 rounded-lg text-xs font-bold transition text-slate-400";
+            }
+        }
+
+        function renderCategoriesGrid() {
+            const grid = document.getElementById('categoryGrid');
+            grid.innerHTML = categories.map(cat => `
+                <button type="button" onclick="selectCategory('${cat}')" id="cat-btn-${cat}" 
+                    class="cat-item border border-slate-800 bg-slate-950/60 text-slate-300 py-2 px-2 rounded-xl text-xs font-medium truncate text-center transition">
+                    ${cat}
+                </button>
+            `).join('');
+            if(categories.length > 0) selectCategory(categories[0]);
+        }
+
+        function selectCategory(cat) {
+            document.querySelectorAll('.cat-item').forEach(b => {
+                b.classList.remove('border-indigo-500', 'bg-indigo-600/20', 'text-indigo-300', 'font-bold');
+                b.classList.add('border-slate-800', 'text-slate-300');
+            });
+            const btn = document.getElementById(`cat-btn-${cat}`);
+            if(btn) btn.classList.add('border-indigo-500', 'bg-indigo-600/20', 'text-indigo-300', 'font-bold');
+            document.getElementById('selectedCategory').value = cat;
+        }
+
+        function handleTxSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('txId').value;
+            const amount = parseFloat(document.getElementById('txAmount').value);
+            const date = document.getElementById('txDate').value;
+            const category = document.getElementById('selectedCategory').value;
+            const desc = document.getElementById('txDesc').value.trim();
+
+            if(!amount || !category) return;
+
+            if(id) {
+                const idx = transactions.findIndex(t => t.id === id);
+                if(idx !== -1) transactions[idx] = { id, type: currentType, amount, date, category, desc };
+            } else {
+                transactions.push({ id: Date.now().toString(), type: currentType, amount, date, category, desc });
+            }
+
+            saveData();
+            resetForm();
+            updateDashboard();
+            switchTab('list');
+        }
+
+        function resetForm() {
+            document.getElementById('txId').value = '';
+            document.getElementById('txAmount').value = '';
+            document.getElementById('txDesc').value = '';
+            document.getElementById('txDate').valueAsDate = new Date();
+            document.getElementById('btnSave').innerText = 'KAYDET';
+            document.getElementById('btnCancelEdit').classList.add('hidden');
+            setType('gider');
+            if(categories.length > 0) selectCategory(categories[0]);
+        }
+
+        function renderList() {
+            const start = document.getElementById('filterStart').value;
+            const end = document.getElementById('filterEnd').value;
+            const container = document.getElementById('txList');
+
+            let filtered = [...transactions].sort((a,b) => new Date(b.date) - new Date(a.date));
+            if(start) filtered = filtered.filter(t => t.date >= start);
+            if(end) filtered = filtered.filter(t => t.date <= end);
+
+            let net = 0;
+            filtered.forEach(t => { net += t.type === 'gelir' ? t.amount : -t.amount; });
+            document.getElementById('filterNet').innerText = `₺${net.toFixed(2)}`;
+
+            if(filtered.length === 0) {
+                container.innerHTML = `<div class="text-center py-8 text-xs text-slate-500">İşlem bulunamadı.</div>`;
+                return;
+            }
+
+            container.innerHTML = filtered.map(t => `
+                <div class="glass-card p-3 rounded-xl flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 rounded-lg flex items-center justify-center text-xs ${t.type === 'gelir' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">
+                            <i class="fa-solid ${t.type === 'gelir' ? 'fa-arrow-up' : 'fa-arrow-down'}"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs font-bold text-slate-200">${t.category}</div>
+                            <div class="text-[10px] text-slate-400">${t.desc || 'Açıklama yok'} • ${formatDate(t.date)}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <span class="text-xs font-extrabold ${t.type === 'gelir' ? 'text-emerald-400' : 'text-rose-400'}">
+                            ${t.type === 'gelir' ? '+' : '-'}₺${t.amount.toFixed(2)}
+                        </span>
+                        <div class="flex space-x-1">
+                            <button onclick="editTx('${t.id}')" class="p-1 text-slate-400 hover:text-indigo-400 text-xs"><i class="fa-solid fa-pen"></i></button>
+                            <button onclick="deleteTx('${t.id}')" class="p-1 text-slate-400 hover:text-rose-400 text-xs"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function clearFilter() {
+            document.getElementById('filterStart').value = '';
+            document.getElementById('filterEnd').value = '';
+            renderList();
+        }
+
+        function editTx(id) {
+            const t = transactions.find(item => item.id === id);
+            if(!t) return;
+            document.getElementById('txId').value = t.id;
+            document.getElementById('txAmount').value = t.amount;
+            document.getElementById('txDate').value = t.date;
+            document.getElementById('txDesc').value = t.desc;
+            setType(t.type);
+            selectCategory(t.category);
+            document.getElementById('btnSave').innerText = 'GÜNCELLE';
+            document.getElementById('btnCancelEdit').classList.remove('hidden');
+            switchTab('add');
+        }
+
+        function deleteTx(id) {
+            if(confirm('Silmek istediğinize emin misiniz?')) {
+                transactions = transactions.filter(t => t.id !== id);
+                saveData();
+                updateDashboard();
+                renderList();
+            }
+        }
+
+        function handleDebtSubmit(e) {
+            e.preventDefault();
+            const person = document.getElementById('debtPerson').value.trim();
+            const type = document.getElementById('debtType').value;
+            const amount = parseFloat(document.getElementById('debtAmount').value);
+            const unit = document.getElementById('debtUnit').value;
+            const note = document.getElementById('debtNote').value.trim();
+
+            if(!person || !amount) return;
+
+            debts.push({ id: Date.now().toString(), person, type, amount, unit, note, status: 'open' });
+            saveDebts();
+            renderDebts();
+
+            document.getElementById('debtPerson').value = '';
+            document.getElementById('debtAmount').value = '';
+            document.getElementById('debtNote').value = '';
+        }
+
+        function renderDebts() {
+            const container = document.getElementById('debtList');
+            const goldSummary = document.getElementById('goldSummaryList');
+
+            const goldTotals = {};
+            debts.filter(d => d.status === 'open' && d.unit.includes('Altın')).forEach(d => {
+                const key = `${d.unit} (${d.type === 'alacak' ? 'Alacak' : 'Borç'})`;
+                goldTotals[key] = (goldTotals[key] || 0) + d.amount;
+            });
+
+            goldSummary.innerHTML = Object.keys(goldTotals).length > 0 
+                ? Object.keys(goldTotals).map(k => `<div class="flex justify-between"><span>${k}:</span> <strong class="text-amber-300">${goldTotals[k]} Adet/Gram</strong></div>`).join('')
+                : '<div class="text-slate-500 text-[11px]">Aktif altın borç/alacak kaydı yok.</div>';
+
+            if(debts.length === 0) {
+                container.innerHTML = `<div class="text-center py-6 text-xs text-slate-500">Borç/Alacak kaydı yok.</div>`;
+                return;
+            }
+
+            container.innerHTML = debts.map(d => `
+                <div class="glass-card p-3 rounded-xl flex items-center justify-between border-l-4 ${d.status === 'closed' ? 'border-l-slate-600 opacity-50' : (d.type === 'alacak' ? 'border-l-emerald-500' : 'border-l-rose-500')}">
+                    <div>
+                        <div class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                            ${d.person} 
+                            <span class="text-[9px] px-1.5 py-0.5 rounded ${d.type === 'alacak' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}">
+                                ${d.type === 'alacak' ? 'Verdim (Alacak)' : 'Aldım (Borç)'}
+                            </span>
+                        </div>
+                        <div class="text-[10px] text-slate-400 mt-0.5">${d.note || 'Not yok'}</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-xs font-extrabold text-amber-300">${d.amount} ${d.unit}</div>
+                        <div class="flex space-x-2 mt-1 justify-end">
+                            ${d.status === 'open' ? `<button onclick="toggleDebt('${d.id}')" class="text-[10px] bg-emerald-600/30 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/30">Kapat</button>` : '<span class="text-[10px] text-slate-500">Kapandı</span>'}
+                            <button onclick="deleteDebt('${d.id}')" class="text-slate-500 hover:text-rose-400 text-xs"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function toggleDebt(id) {
+            const d = debts.find(item => item.id === id);
+            if(d) {
+                d.status = d.status === 'open' ? 'closed' : 'open';
+                saveDebts();
+                renderDebts();
+            }
+        }
+
+        function deleteDebt(id) {
+            if(confirm('Borç kaydı silinsin mi?')) {
+                debts = debts.filter(d => d.id !== id);
+                saveDebts();
+                renderDebts();
+            }
+        }
+
+        function handleSavingSubmit(e) {
+            e.preventDefault();
+            const title = document.getElementById('savingTitle').value.trim();
+            const target = parseFloat(document.getElementById('savingTarget').value);
+            const current = parseFloat(document.getElementById('savingCurrent').value) || 0;
+
+            if(!title || !target) return;
+
+            savings.push({ id: Date.now().toString(), title, target, current });
+            saveSavings();
+            renderSavings();
+
+            document.getElementById('savingTitle').value = '';
+            document.getElementById('savingTarget').value = '';
+            document.getElementById('savingCurrent').value = '';
+        }
+
+        function renderSavings() {
+            const container = document.getElementById('savingsList');
+            if(savings.length === 0) {
+                container.innerHTML = `<div class="text-center py-6 text-xs text-slate-500">Tasarruf hedefi yok.</div>`;
+                return;
+            }
+
+            container.innerHTML = savings.map(s => {
+                const percent = Math.min(100, Math.round((s.current / s.target) * 100));
+                return `
+                    <div class="glass-card p-3.5 rounded-xl space-y-2">
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="font-bold text-slate-200">${s.title}</span>
+                            <span class="text-emerald-400 font-extrabold">₺${s.current.toFixed(2)} / ₺${s.target.toFixed(2)} (%${percent})</span>
+                        </div>
+                        <div class="w-full bg-slate-950 rounded-full h-2 overflow-hidden border border-slate-800">
+                            <div class="bg-emerald-500 h-2 rounded-full transition-all" style="width: ${percent}%"></div>
+                        </div>
+                        <div class="flex justify-between items-center pt-1">
+                            <button onclick="addSavingMoney('${s.id}')" class="text-[10px] bg-indigo-600/30 text-indigo-300 px-2.5 py-1 rounded-lg border border-indigo-500/30">+ Para Ekle</button>
+                            <button onclick="deleteSaving('${s.id}')" class="text-slate-500 hover:text-rose-400 text-xs"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function addSavingMoney(id) {
+            const val = prompt('Eklenecek tutar (₺):');
+            if(val && !isNaN(val)) {
+                const s = savings.find(item => item.id === id);
+                if(s) {
+                    s.current += parseFloat(val);
+                    saveSavings();
+                    renderSavings();
+                }
+            }
+        }
+
+        function deleteSaving(id) {
+            if(confirm('Hedef silinsin mi?')) {
+                savings = savings.filter(s => s.id !== id);
+                saveSavings();
+                renderSavings();
+            }
+        }
+
+        function updateDashboard() {
+            let inc = 0, exp = 0;
+            transactions.forEach(t => {
+                if(t.type === 'gelir') inc += t.amount;
+                else exp += t.amount;
+            });
+
+            document.getElementById('totalBalance').innerText = `₺${(inc - exp).toFixed(2)}`;
+            document.getElementById('totalIncome').innerText = `₺${inc.toFixed(2)}`;
+            document.getElementById('totalExpense').innerText = `₺${exp.toFixed(2)}`;
+        }
+
+        function renderChart() {
+            const expenses = transactions.filter(t => t.type === 'gider');
+            const catMap = {};
+            expenses.forEach(t => { catMap[t.category] = (catMap[t.category] || 0) + t.amount; });
+
+            const labels = Object.keys(catMap);
+            const data = Object.values(catMap);
+            const ctx = document.getElementById('expenseChart').getContext('2d');
+            
+            if(chartInstance) chartInstance.destroy();
+            if(data.length === 0) {
+                document.getElementById('chartLegend').innerHTML = `<div class="text-center text-slate-500 py-4">Gider verisi bulunmuyor.</div>`;
+                return;
+            }
+
+            const colors = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#f43f5e'];
+
+            chartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{ data: data, backgroundColor: colors, borderWidth: 0 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: '70%' }
+            });
+
+            const totalExp = data.reduce((a,b) => a+b, 0);
+            document.getElementById('chartLegend').innerHTML = labels.map((l, i) => `
+                <div class="flex justify-between items-center">
+                    <span class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full" style="background-color:${colors[i % colors.length]}"></span>
+                        <span class="text-slate-300 font-medium">${l}</span>
+                    </span>
+                    <span class="text-slate-400 font-bold">₺${catMap[l].toFixed(2)} (%${((catMap[l]/totalExp)*100).toFixed(0)})</span>
+                </div>
+            `).join('');
+        }
+
+        function saveData() { localStorage.setItem('my_tx_data', JSON.stringify(transactions)); }
+        function saveDebts() { localStorage.setItem('my_debt_data', JSON.stringify(debts)); }
+        function saveSavings() { localStorage.setItem('my_saving_data', JSON.stringify(savings)); }
+        function formatDate(d) { const parts = d.split('-'); return `${parts[2]}.${parts[1]}.${parts[0]}`; }
+
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ transactions, categories, debts, savings }));
+            const dlAnchorElem = document.createElement('a');
+            dlAnchorElem.setAttribute("href", dataStr);
+            dlAnchorElem.setAttribute("download", `cuzdan_yedek_${new Date().toISOString().slice(0,10)}.json`);
+            dlAnchorElem.click();
+        }
+    </script>
+</body>
+</html>
